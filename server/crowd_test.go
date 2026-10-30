@@ -163,6 +163,21 @@ func TestCrowdSnapshotBudget(t *testing.T) {
 	t.Logf("400-soldier full snapshot: %d bytes", len(data))
 }
 
+func TestCrowdDoesNotTeleportToDistantFormation(t *testing.T) {
+	g := crowdFixture(t)
+	g.Squads = g.Squads[:1]
+	s := g.Squads[0]
+	s.Alive = 1
+	g.stepCrowd(.05)
+	b := g.bodies[0]
+	x, z := b.X, b.Z
+	s.X += 60
+	g.stepCrowd(.05)
+	if dist(b.X, b.Z, x, z) > g.spec(s).Speed*.05*1.4+.001 {
+		t.Fatal("living soldier teleported to a distant formation goal")
+	}
+}
+
 func BenchmarkCrowd400(b *testing.B) {
 	g := NewGame("BENCH", 0, 0)
 	g.Players[0] = &Player{ID: 0, Faction: 0, MainBase: 0}

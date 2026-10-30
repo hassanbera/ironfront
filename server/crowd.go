@@ -145,7 +145,7 @@ func (g *Game) stepCrowd(dt float64) {
 			b.Slot = slot
 			b.Squad = s
 			b.Radius = r
-			if !b.Ready || dist(b.X, b.Z, x, z) > 35 {
+			if !b.Ready {
 				b.X = x
 				b.Z = z
 				b.Ready = true
