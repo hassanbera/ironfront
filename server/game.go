@@ -59,6 +59,8 @@ func (g *Game) start(bots bool) error {
 		g.Heroes = append(g.Heroes, &Hero{Owner: i, Class: p.HeroClass, X: v.X + math.Sin(a)*25, Z: v.Z + math.Cos(a)*25, HP: hs.HP, Stamina: 100, Facing: a})
 	}
 	g.Phase = "battle"
+	g.stepCrowd(.05)
+	g.crowdSnapshot()
 	g.event(-1, "start", "Dört sancak, tek savaş alanı. Outpostları ele geçir.")
 	return nil
 }
@@ -289,6 +291,7 @@ func (g *Game) step(dt float64) {
 	g.Time += dt
 	g.updateCapacity()
 	g.moveSquads(dt)
+	g.stepCrowd(dt)
 	g.moveHeroes(dt)
 	if g.Time >= g.combatAt {
 		g.combatAt = g.Time + 0.5
@@ -296,6 +299,7 @@ func (g *Game) step(dt float64) {
 	}
 	g.capture(dt)
 	g.reinforce()
+	g.crowdSnapshot()
 	if g.Time >= g.botAt {
 		g.botAt = g.Time + 3
 		g.bots()

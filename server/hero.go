@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 func (g *Game) moveHeroes(dt float64) {
 	for _, h := range g.Heroes {
@@ -43,12 +46,7 @@ func (g *Game) moveHeroes(dt float64) {
 				speed *= 0.65
 			}
 			dx, dz := mx*speed*dt, mz*speed*dt
-			if g.nav.walkable(h.X+dx, h.Z, 0.7) {
-				h.X += dx
-			}
-			if g.nav.walkable(h.X, h.Z+dz, 0.7) {
-				h.Z += dz
-			}
+			g.moveHeroBody(h, dx, dz)
 		} else {
 			h.Block = false
 			for _, s := range g.Squads {
@@ -145,81 +143,117 @@ func (g *Game) heroImpact(h *Hero, x, z, damage float64, kind string) {
 }
 
 func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
-	spec := rules.Heroes[h.Class]
-	r := 7.5
-	arc := 1.2
-	damage := spec.Damage
+	type candidate struct {
+		kind        string
+		id, slot    int
+		x, z, score float64
+		squad       *Squad
+		hero        *Hero
+		base        *Base
+	}
+	targets := make([]candidate, 0, 8)
+	reach, arc := 3.4, 1.1
 	if h.Class == 2 {
-		r = 32
-		arc = 0.3
+		reach, arc = 32, .3
 	}
 	if skill {
-		damage *= 2.2
-		arc = 1.8
+		arc = 1.65
 		if h.Class == 2 {
-			arc = 0.8
+			arc = .8
 		}
 	}
-	hits := 0
+	add := func(c candidate, radius float64) {
+		dx, dz := c.x-h.X, c.z-h.Z
+		distance := math.Hypot(dx, dz)
+		if distance > reach+radius {
+			return
+		}
+		deviation := math.Abs(angle(math.Atan2(dx, dz) - h.Facing))
+		if deviation > arc || !g.nav.line(Vec{h.X, h.Z}, Vec{c.x, c.z}) {
+			return
+		}
+		c.score = distance + deviation*2
+		targets = append(targets, c)
+	}
 	for _, s := range g.Squads {
-		if s.Owner == h.Owner || s.Alive == 0 || dist(h.X, h.Z, s.X, s.Z) > r+3 {
+		if s.Owner == h.Owner || s.Alive == 0 {
 			continue
 		}
-		a := math.Atan2(s.X-h.X, s.Z-h.Z)
-		if math.Abs(angle(a-h.Facing)) > arc {
-			continue
-		}
-		if !g.nav.line(Vec{h.X, h.Z}, Vec{s.X, s.Z}) {
-			continue
-		}
-		bearing := math.Abs(angle(math.Atan2(h.X-s.X, h.Z-s.Z) - s.Facing))
-		flank := "front"
-		m := 1.0
-		if bearing > 2.15 {
-			flank = "rear"
-			m = 1.6
-		}
-		before := s.HP
-		g.damageSquad(s, damage*m, h.Owner, -100-h.Owner, flank)
-		g.heroImpact(h, s.X, s.Z, before-s.HP, "hit")
-		hits++
-		if !skill && hits >= 1 {
-			break
+		for _, slot := range s.Slots {
+			b := &s.Bodies[slot]
+			if b.Ready {
+				add(candidate{kind: "soldier", id: s.ID, slot: slot, x: b.X, z: b.Z, squad: s}, b.Radius)
+			}
 		}
 	}
 	for _, t := range g.Heroes {
-		if t.Owner == h.Owner || t.HP <= 0 || dist(h.X, h.Z, t.X, t.Z) > r {
-			continue
-		}
-		a := math.Atan2(t.X-h.X, t.Z-h.Z)
-		if math.Abs(angle(a-h.Facing)) <= arc {
-			before := t.HP
-			blocked := t.Block && t.Stamina >= 5 && math.Abs(angle(math.Atan2(h.X-t.X, h.Z-t.Z)-t.Facing)) < 1.5
-			g.damageHero(t, damage, h.X, h.Z)
-			if t.HP < before {
-				kind := "hit"
-				if blocked {
-					kind = "block"
-				}
-				g.heroImpact(h, t.X, t.Z, before-t.HP, kind)
-			}
+		if t.Owner != h.Owner && t.HP > 0 {
+			add(candidate{kind: "hero", id: t.Owner, slot: -1, x: t.X, z: t.Z, hero: t}, heroRadius)
 		}
 	}
 	for _, b := range g.Bases {
-		if b.Stage == "active" && b.Owner != h.Owner && dist(h.X, h.Z, b.X, b.Z) < r+6 {
-			a := math.Atan2(b.X-h.X, b.Z-h.Z)
-			if math.Abs(angle(a-h.Facing)) < arc {
-				before := b.HP
-				b.HP = math.Max(0, b.HP-damage*0.6)
-				g.heroImpact(h, b.X, b.Z, before-b.HP, "hit")
-				if b.HP == 0 {
-					b.Owner = -1
-					b.Stage = "ruined"
-					b.Captor = -1
-					b.Progress = 0
-				}
+		if b.Stage == "active" && b.Owner != h.Owner {
+			d := dist(h.X, h.Z, b.X, b.Z)
+			if d > .001 {
+				add(candidate{kind: "base", id: b.ID, slot: -1, x: b.X + (h.X-b.X)/d*9.2, z: b.Z + (h.Z-b.Z)/d*9.2, base: b}, 0)
 			}
 		}
+	}
+	// Sort only nearby, in-cone candidates; stable order makes equal scores deterministic.
+	sort.SliceStable(targets, func(i, j int) bool { return targets[i].score < targets[j].score })
+	h.HitTargets = h.HitTargets[:0]
+	usedSquads := map[int]bool{}
+	for _, t := range targets {
+		damage := rules.Heroes[h.Class].Damage
+		if skill {
+			damage *= 2.2
+		}
+		contact := HitTarget{Kind: t.kind, ID: t.id, Slot: t.slot, X: t.x, Z: t.z}
+		if s := t.squad; s != nil {
+			if usedSquads[s.ID] {
+				continue
+			}
+			usedSquads[s.ID] = true
+			flank := "front"
+			if math.Abs(angle(math.Atan2(h.X-t.x, h.Z-t.z)-s.Facing)) > 2.15 {
+				flank = "rear"
+				damage *= 1.6
+			}
+			before := s.HP
+			g.damageSquad(s, damage, h.Owner, -100-h.Owner, flank)
+			syncSlots(s, t.slot)
+			contact.Damage = before - s.HP
+		} else if target := t.hero; target != nil {
+			contact.Blocked = target.Block && target.Stamina >= 5 && math.Abs(angle(math.Atan2(h.X-target.X, h.Z-target.Z)-target.Facing)) < 1.5
+			before := target.HP
+			g.damageHero(target, damage, h.X, h.Z)
+			contact.Damage = before - target.HP
+		} else if b := t.base; b != nil {
+			before := b.HP
+			b.HP = math.Max(0, b.HP-damage*.6)
+			contact.Damage = before - b.HP
+			if b.HP == 0 {
+				b.Owner = -1
+				b.Stage = "ruined"
+				b.Captor = -1
+				b.Progress = 0
+			}
+		}
+		if contact.Damage <= 0 {
+			continue
+		}
+		h.HitTargets = append(h.HitTargets, contact)
+		if !skill || len(h.HitTargets) >= 3 {
+			break
+		}
+	}
+	if len(h.HitTargets) > 0 {
+		hit := h.HitTargets[0]
+		kind := "hit"
+		if hit.Blocked {
+			kind = "block"
+		}
+		g.heroImpact(h, hit.X, hit.Z, hit.Damage, kind)
 	}
 }
 func (g *Game) damageHero(h *Hero, damage, x, z float64) {

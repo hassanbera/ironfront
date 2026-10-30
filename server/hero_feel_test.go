@@ -12,7 +12,7 @@ func heroDuel(t *testing.T) (*Game, *Hero, *Hero) {
 	a, b := g.Heroes[0], g.Heroes[1]
 	g.Heroes = []*Hero{a, b}
 	a.X, a.Z, a.Facing, a.Active, a.InputAt = 0, 50, 0, true, g.Time
-	b.X, b.Z, b.Facing, b.Active, b.InputAt = 0, 55, math.Pi, true, g.Time
+	b.X, b.Z, b.Facing, b.Active, b.InputAt = 0, 53, math.Pi, true, g.Time
 	a.Input = HeroInput{Facing: 0}
 	b.Input = HeroInput{Facing: math.Pi}
 	return g, a, b
