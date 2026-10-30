@@ -25,16 +25,24 @@ func (g *Game) moveHeroes(dt float64) {
 		}
 		if h.Active {
 			h.Facing = h.Input.Facing
-			h.Block = h.Input.Block && h.Stamina > 3
+			h.Block = h.Input.Block && h.Stamina > 3 && g.Time >= h.DodgeUntil
+			if h.Block && h.PendingStrike > 0 {
+				h.PendingStrike = 0
+				h.AttackAt = 0
+			}
 			speed := spec.Speed
+			mx, mz := h.Input.X, h.Input.Z
 			if h.Block {
 				speed *= 0.45
 				h.Stamina = math.Max(0, h.Stamina-dt*8)
 			}
 			if g.Time < h.DodgeUntil {
 				speed *= 2.8
+				mx, mz = h.DodgeX, h.DodgeZ
+			} else if h.PendingStrike > 0 {
+				speed *= 0.65
 			}
-			dx, dz := h.Input.X*speed*dt, h.Input.Z*speed*dt
+			dx, dz := mx*speed*dt, mz*speed*dt
 			if g.nav.walkable(h.X+dx, h.Z, 0.7) {
 				h.X += dx
 			}
@@ -50,6 +58,10 @@ func (g *Game) moveHeroes(dt float64) {
 					break
 				}
 			}
+		}
+		if h.PendingStrike > 0 && g.Time >= h.PendingStrike {
+			h.PendingStrike = 0
+			g.resolveHeroStrike(h, h.PendingSkill)
 		}
 		if !h.Block {
 			h.Stamina = math.Min(100, h.Stamina+dt*16)
@@ -80,13 +92,20 @@ func (g *Game) heroAction(owner int, action string) {
 			h.Stamina -= 30
 			h.DodgeUntil = g.Time + 0.3
 			h.DodgeReady = g.Time + 1.1
-			if math.Hypot(h.Input.X, h.Input.Z) < 0.1 {
-				h.Input.X = math.Sin(h.Facing)
-				h.Input.Z = math.Cos(h.Facing)
+			h.DodgeX, h.DodgeZ = h.Input.X, h.Input.Z
+			l := math.Hypot(h.DodgeX, h.DodgeZ)
+			if l < 0.1 {
+				h.DodgeX, h.DodgeZ = -math.Sin(h.Input.Facing), -math.Cos(h.Input.Facing)
+			} else {
+				h.DodgeX /= l
+				h.DodgeZ /= l
 			}
+			h.PendingStrike = 0
+			h.AttackAt = 0
+			h.Block = false
 		}
 	case "skill":
-		if g.Time < h.SkillReady || h.Stamina < 25 {
+		if g.Time < h.SkillReady || h.Stamina < 25 || g.Time < h.DodgeUntil || (h.Class != 0 && (g.Time < h.AttackReady || h.Block || h.Input.Block)) {
 			return
 		}
 		h.Stamina -= 25
@@ -99,11 +118,33 @@ func (g *Game) heroAction(owner int, action string) {
 	}
 }
 func (g *Game) heroStrike(h *Hero, skill bool) {
-	if g.Time < h.AttackReady && !skill {
+	if g.Time < h.AttackReady || g.Time < h.DodgeUntil || h.Block || h.Input.Block || h.HP <= 0 {
 		return
 	}
-	h.AttackReady = g.Time + 0.55
+	h.AttackDuration = 0.62
+	if h.Class == 1 {
+		h.AttackDuration = 0.55
+	}
+	if h.Class == 2 {
+		h.AttackDuration = 0.72
+	}
+	if g.Time-h.AttackAt > 1.2 {
+		h.Combo = 0
+	}
+	h.AttackKind = h.Combo % 3
+	h.Combo++
+	h.AttackReady = g.Time + h.AttackDuration
 	h.AttackAt = g.Time
+	h.AttackImpact = g.Time + h.AttackDuration*0.42
+	h.PendingStrike = h.AttackImpact
+	h.PendingSkill = skill
+}
+
+func (g *Game) heroImpact(h *Hero, x, z, damage float64, kind string) {
+	h.ImpactAt, h.ImpactX, h.ImpactZ, h.ImpactDamage, h.ImpactKind = g.Time, x, z, damage, kind
+}
+
+func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
 	spec := rules.Heroes[h.Class]
 	r := 7.5
 	arc := 1.2
@@ -138,7 +179,9 @@ func (g *Game) heroStrike(h *Hero, skill bool) {
 			flank = "rear"
 			m = 1.6
 		}
+		before := s.HP
 		g.damageSquad(s, damage*m, h.Owner, -100-h.Owner, flank)
+		g.heroImpact(h, s.X, s.Z, before-s.HP, "hit")
 		hits++
 		if !skill && hits >= 1 {
 			break
@@ -150,14 +193,25 @@ func (g *Game) heroStrike(h *Hero, skill bool) {
 		}
 		a := math.Atan2(t.X-h.X, t.Z-h.Z)
 		if math.Abs(angle(a-h.Facing)) <= arc {
+			before := t.HP
+			blocked := t.Block && t.Stamina >= 5 && math.Abs(angle(math.Atan2(h.X-t.X, h.Z-t.Z)-t.Facing)) < 1.5
 			g.damageHero(t, damage, h.X, h.Z)
+			if t.HP < before {
+				kind := "hit"
+				if blocked {
+					kind = "block"
+				}
+				g.heroImpact(h, t.X, t.Z, before-t.HP, kind)
+			}
 		}
 	}
 	for _, b := range g.Bases {
 		if b.Stage == "active" && b.Owner != h.Owner && dist(h.X, h.Z, b.X, b.Z) < r+6 {
 			a := math.Atan2(b.X-h.X, b.Z-h.Z)
 			if math.Abs(angle(a-h.Facing)) < arc {
+				before := b.HP
 				b.HP = math.Max(0, b.HP-damage*0.6)
+				g.heroImpact(h, b.X, b.Z, before-b.HP, "hit")
 				if b.HP == 0 {
 					b.Owner = -1
 					b.Stage = "ruined"
@@ -174,6 +228,7 @@ func (g *Game) damageHero(h *Hero, damage, x, z float64) {
 	}
 	a := math.Abs(angle(math.Atan2(x-h.X, z-h.Z) - h.Facing))
 	if h.Block && a < 1.5 && h.Stamina >= 5 {
+		h.BlockAt = g.Time
 		damage *= 0.22
 		h.Stamina = math.Max(0, h.Stamina-5)
 	}
@@ -182,6 +237,8 @@ func (g *Game) damageHero(h *Hero, damage, x, z float64) {
 	}
 	h.HP = math.Max(0, h.HP-damage)
 	if h.HP == 0 {
+		h.PendingStrike = 0
+		h.AttackAt = 0
 		h.Respawn = g.Time + 20
 		h.Block = false
 		h.Input = HeroInput{}
