@@ -1,0 +1,8 @@
+node_modules/
+frontend/dist/
+*.exe
+.env
+.env.local
+.vercel/
+.DS_Store
+coverage.out

@@ -1,0 +1,60 @@
+{
+  "factions": [
+    {"id":0,"name":"Knights","title":"Çelikten irade","color":"#bec9cd","accent":"#e6c887","emblem":"shield","description":"Zırhlı hatlar ve yıkıcı süvari hücumu. Açık arazide güçlü; ormanda ve kuşatıldığında kırılgan.",
+      "units":[
+        {"name":"Atlı Şövalye","short":"Şövalye","role":"Ağır süvari","kind":"cavalry","hp":155,"damage":8.5,"armor":0.32,"speed":5.7,"range":8,"cooldown":32,"notice":2.2},
+        {"name":"Uzun Yaycı","short":"Uzun yaycı","role":"Menzilli · hançer","kind":"archer","hp":75,"damage":6.5,"armor":0.08,"speed":3.5,"range":32,"cooldown":19,"notice":1.1},
+        {"name":"Mızrak Muhafızı","short":"Mızrakçı","role":"Ağır piyade · kalkan","kind":"spear","hp":135,"damage":6,"armor":0.30,"speed":3.2,"range":9,"cooldown":24,"notice":1.7},
+        {"name":"Kılıç Muhafızı","short":"Muhafız","role":"Ağır piyade · kalkan","kind":"sword","hp":145,"damage":7,"armor":0.35,"speed":3.1,"range":8,"cooldown":27,"notice":1.9}],
+      "formations":[
+        {"name":"Çelik Kama","shape":"wedge","description":"Süvaride +%25 hücum; dar alanda −%20 hız.","speed":1.05,"attack":1.05,"front":1,"rear":1.18},
+        {"name":"Kalkan Duvarı","shape":"wall","description":"Önden −%32 hasar; −%28 hareket hızı.","speed":0.72,"attack":0.94,"front":0.68,"rear":1.12},
+        {"name":"Savaş Hattı","shape":"line","description":"Yaycılarda +%15 menzil; yanlardan savunmasız.","speed":0.92,"attack":1,"front":0.92,"rear":1.12}]},
+    {"id":1,"name":"Vikings","title":"Fırtınanın çocukları","color":"#6aa5de","accent":"#91c6ef","emblem":"axe","description":"Kalkan duvarıyla karşıla, baltalarla yar. Ormanda çevik; açık arazide menzilli ateşe dikkat.",
+      "units":[
+        {"name":"Büyük Baltacı","short":"Baltacı","role":"Zırh kıran piyade","kind":"axe","hp":130,"damage":8.5,"armor":0.20,"speed":3.7,"range":8,"cooldown":25,"notice":1.4},
+        {"name":"Mızraklı Kalkancı","short":"Kalkancı","role":"Savunma · süvari karşıtı","kind":"spear","hp":140,"damage":6,"armor":0.32,"speed":3.2,"range":9,"cooldown":24,"notice":1.6},
+        {"name":"Baltalı Okçu","short":"Baltalı okçu","role":"Menzilli · balta","kind":"archer","hp":85,"damage":6.4,"armor":0.10,"speed":3.6,"range":27,"cooldown":19,"notice":1.1},
+        {"name":"Çift Baltalı Berserker","short":"Berserker","role":"Hızlı baskın piyadesi","kind":"berserker","hp":115,"damage":10,"armor":0.04,"speed":4.5,"range":8,"cooldown":29,"notice":0.9}],
+      "formations":[
+        {"name":"Kalkan Çemberi","shape":"circle","description":"Her yönden −%18 hasar; −%30 hız ve −%10 saldırı.","speed":0.70,"attack":0.90,"front":0.82,"rear":0.58},
+        {"name":"Yaban Domuzu","shape":"wedge","description":"+%15 yakın dövüş; arkadan +%25 hasar alır.","speed":1.02,"attack":1.15,"front":1,"rear":1.25},
+        {"name":"Dağınık Akın","shape":"loose","description":"Menzilli ateşe −%25 hasar; yakın dövüşte zayıf.","speed":1.1,"attack":0.96,"front":1.12,"rear":0.90}]},
+    {"id":2,"name":"Arabs","title":"Kumların muhafızları","color":"#64bb91","accent":"#8ed9b3","emblem":"sun","description":"Deve süvarisi ve esnek piyade hatları. Kumda hızlı, yüksek arazide tehlikeli; sıkışık geçitlerde dikkatli ol.",
+      "units":[
+        {"name":"Deve Binicisi","short":"Deve süvarisi","role":"Süvari karşıtı binici","kind":"camel","hp":130,"damage":7.1,"armor":0.18,"speed":5.4,"range":8,"cooldown":28,"notice":1.7},
+        {"name":"Hafif Süvari","short":"Hafif süvari","role":"Çevik yan saldırı","kind":"cavalry","hp":90,"damage":7,"armor":0.13,"speed":7,"range":8,"cooldown":22,"notice":1.1},
+        {"name":"Mızrak Atıcısı","short":"Mızrak atıcı","role":"Cirit · kılıç · kalkan","kind":"javelin","hp":110,"damage":7.2,"armor":0.20,"speed":3.8,"range":19,"cooldown":22,"notice":1.2},
+        {"name":"Kılıçlı Okçu","short":"Kılıçlı okçu","role":"Menzilli · kılıç","kind":"archer","hp":80,"damage":6.2,"armor":0.12,"speed":3.8,"range":28,"cooldown":18,"notice":1.1}],
+      "formations":[
+        {"name":"Hilal","shape":"crescent","description":"Yan saldırıda +%20 hasar; önden +%8 hasar alır.","speed":1,"attack":1,"front":1.08,"rear":0.92},
+        {"name":"Çöl Yıldızı","shape":"circle","description":"Her yönden savunma; −%24 hareket hızı.","speed":0.76,"attack":0.92,"front":0.86,"rear":0.60},
+        {"name":"Serap Hattı","shape":"loose","description":"+%12 hız; menzilli ateşe −%25 hasar.","speed":1.12,"attack":0.95,"front":1.15,"rear":0.94}]},
+    {"id":3,"name":"Turks","title":"Bozkırın gölgesi","color":"#df7969","accent":"#f3a28e","emblem":"moon","description":"Atlı okçularla yıprat, kargılılarla arkadan vur. Çeviklik ve zamanlama ister; cephede ağır zırha yenilir.",
+      "units":[
+        {"name":"Atlı Okçu","short":"Atlı okçu","role":"Hareketli menzil","kind":"horseArcher","hp":85,"damage":5.4,"armor":0.08,"speed":6.7,"range":25,"cooldown":24,"notice":1.0},
+        {"name":"Atlı Kargıcı","short":"Kargıcı","role":"Yan ve arka baskın","kind":"lancer","hp":105,"damage":7.3,"armor":0.14,"speed":6.4,"range":9,"cooldown":27,"notice":1.2},
+        {"name":"Hafif Piyade","short":"Hafif piyade","role":"Mızrak · kılıç · kalkan","kind":"spear","hp":95,"damage":6.8,"armor":0.18,"speed":4.4,"range":9,"cooldown":18,"notice":1.0},
+        {"name":"Kılıçlı Okçu","short":"Kılıçlı okçu","role":"Menzilli · kılıç","kind":"archer","hp":75,"damage":6,"armor":0.10,"speed":4,"range":28,"cooldown":18,"notice":1.0}],
+      "formations":[
+        {"name":"Turan Hilali","shape":"crescent","description":"Yan/arka saldırıda +%20; önden savunma zayıf.","speed":1.05,"attack":1,"front":1.15,"rear":0.95},
+        {"name":"Bozkır Yayı","shape":"loose","description":"Atlı okçu hareket ederken tam hasar; −%25 ok hasarı.","speed":1.12,"attack":0.94,"front":1.15,"rear":0.90},
+        {"name":"Kargı Kaması","shape":"wedge","description":"Kargıcı baskınında +%20; cepheden hasara açık.","speed":1.08,"attack":1.06,"front":1.08,"rear":1.12}]}
+  ],
+  "heroes": [
+    {"id":0,"name":"Muhafız","description":"360 can · güçlü blok · Q: siper","hp":360,"damage":42,"speed":6.5,"cooldown":12},
+    {"id":1,"name":"Düellocu","description":"260 can · hızlı hücum · Q: yarma","hp":260,"damage":58,"speed":7.5,"cooldown":9},
+    {"id":2,"name":"Akıncı","description":"220 can · uzun menzil · Q: yaylım","hp":220,"damage":32,"speed":8,"cooldown":10}
+  ],
+  "maps": [
+    {"id":0,"name":"Sınır Vadisi","subtitle":"Ormanlar, tepeler ve açık cepheler","biome":"grass","size":180,"tag":"DENGELİ","description":"Orman süvariyi yavaşlatır. Tepelerdeki okçular menzil kazanır. Merkez, dört cephenin kesişim noktası.",
+      "zones":[{"x":-38,"z":0,"rx":19,"rz":24,"kind":"forest"},{"x":38,"z":0,"rx":19,"rz":24,"kind":"forest"},{"x":0,"z":-37,"rx":24,"rz":16,"kind":"hill"},{"x":0,"z":37,"rx":24,"rz":16,"kind":"hill"}],
+      "obstacles":[{"x":0,"z":0,"r":7},{"x":-18,"z":-12,"r":4},{"x":18,"z":12,"r":4}]},
+    {"id":1,"name":"Kızıl Geçit","subtitle":"Kum denizi ve dar boğazlar","biome":"desert","size":180,"tag":"DAR GEÇİTLER","description":"Geçitlerde geniş dizilimler yavaşlar. Kumda deve süvarileri hızlanır. İki kanadı aynı anda kontrol et.",
+      "zones":[{"x":0,"z":0,"rx":84,"rz":84,"kind":"sand"},{"x":0,"z":-27,"rx":12,"rz":24,"kind":"pass"},{"x":0,"z":27,"rx":12,"rz":24,"kind":"pass"},{"x":-36,"z":0,"rx":20,"rz":14,"kind":"hill"},{"x":36,"z":0,"rx":20,"rz":14,"kind":"hill"}],
+      "obstacles":[{"x":-21,"z":-18,"r":10},{"x":21,"z":-18,"r":10},{"x":-21,"z":18,"r":10},{"x":21,"z":18,"r":10},{"x":0,"z":0,"r":6}]},
+    {"id":2,"name":"Kuzey Surları","subtitle":"Donmuş orman ve bataklık vadiler","biome":"snow","size":180,"tag":"SAVUNMA HATLARI","description":"Bataklıkta ağır birlikler yavaşlar. Viking piyadeleri ormanda çeviktir. Tepeler menzilli savunmaya uygundur.",
+      "zones":[{"x":0,"z":-34,"rx":18,"rz":27,"kind":"forest"},{"x":0,"z":34,"rx":18,"rz":27,"kind":"forest"},{"x":-35,"z":0,"rx":26,"rz":13,"kind":"marsh"},{"x":35,"z":0,"rx":26,"rz":13,"kind":"marsh"},{"x":-36,"z":-38,"rx":13,"rz":13,"kind":"hill"},{"x":36,"z":38,"rx":13,"rz":13,"kind":"hill"}],
+      "obstacles":[{"x":0,"z":0,"r":8},{"x":-55,"z":0,"r":5},{"x":55,"z":0,"r":5}]}
+  ]
+}
