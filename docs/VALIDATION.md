@@ -2,6 +2,14 @@
 
 Bu kayıt ilk oynanabilir sürümün yerel kontrollerini özetler. İnternet dağıtımı veya farklı fiziksel cihazlarda yük testi yapılmadı.
 
+## GitHub aktarımı sırasında tekrar kontrol
+
+30 Ekim 2026 tarihinde `go test ./...`, `go vet ./...` ve frontend üretim derlemesi yeniden geçti. Dört WebSocket istemcisi testi, kullanıcının açık oyununa dokunmadan geçici bir sunucuda `9890` portunda çalıştırıldı ve geçti. Vite, Three.js chunk boyutu için 500 KB uyarısı verdi; derleme başarılıdır.
+
+GitHub Actions workflow gönderimi, OAuth oturumunun `workflow` kapsamı eksik olduğu için GitHub tarafından reddedildi. Hazırlanan kontrol dosyası `docs/ci.yml.template` olarak saklanır; aktif CI veya başarılı Linux race sonucu yoktur. Etkinleştirme koşulu CONTRIBUTING.md içinde açıklanır.
+
+Design Report şablonuyla hazırlanan `docs/IRONFRONT-Tasarim-Raporu.docx` altı sayfa olarak render edildi ve tüm sayfalar incelendi. Türkçe Word için içindekiler alanı yerelleştirmeden bağımsız hale getirildi; 12 başlığın sayfa numarası doğrulandı. Kaynak şablon değiştirilmedi; stiller, bölüm geometrisi, numaralandırma ve ilişki parçaları korundu.
+
 ## Geçen kontroller
 
 - `npm run build`: TypeScript strict kontrolü ve Vite üretim derlemesi başarılı.

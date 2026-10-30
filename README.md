@@ -123,3 +123,7 @@ Henüz internete yayınlanmadı. `vercel.json` frontend için hazırdır. Kalıc
 ## Lisanslar
 
 Çevre modelleri: Kenney Castle Kit / Nature Kit, **CC0**. Kaynaklar, özgün lisanslar ve envanter `frontend/public/assets/` altında. Three.js MIT, coder/websocket ISC. Barlow yazı tipi SIL Open Font License ile dağıtılır. [THIRD_PARTY.md](THIRD_PARTY.md) dosyasına bak.
+
+## Geliştirme takibi
+
+[Yol haritası](docs/ROADMAP.md) tamamlanan ve planlanan işleri, [CONTRIBUTING.md](CONTRIBUTING.md) küçük ve doğrulanmış commit düzenini açıklar. [Tasarım raporu](docs/IRONFRONT-Tasarim-Raporu.docx), seçilen Design Report şablonuyla hazırlandı. CI taslağı `docs/ci.yml.template` içindedir; mevcut GitHub oturumunun `workflow` yetkisi eksik olduğundan henüz etkin değildir.
