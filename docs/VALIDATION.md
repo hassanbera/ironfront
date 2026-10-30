@@ -2,6 +2,8 @@
 
 Bu kayıt ilk oynanabilir sürümün yerel kontrollerini özetler. İnternet dağıtımı veya farklı fiziksel cihazlarda yük testi yapılmadı.
 
+Sonraki karakter/animasyon sürümünün üretim derlemesi, asset kontrolü, tarayıcı denemeleri ve FPS ölçümleri ayrı [VISUAL_UPGRADE.md](VISUAL_UPGRADE.md) kaydındadır. Aşağıdaki Go/ağ testleri ilk sürümün kanıtıdır; yalnızca frontend değişen görsel geçişte yeniden çalıştırılmadı.
+
 ## GitHub aktarımı sırasında tekrar kontrol
 
 30 Ekim 2026 tarihinde `go test ./...`, `go vet ./...` ve frontend üretim derlemesi yeniden geçti. Dört WebSocket istemcisi testi, kullanıcının açık oyununa dokunmadan geçici bir sunucuda `9890` portunda çalıştırıldı ve geçti. Vite, Three.js chunk boyutu için 500 KB uyarısı verdi; derleme başarılıdır.
@@ -29,6 +31,6 @@ Design Report şablonuyla hazırlanan `docs/IRONFRONT-Tasarim-Raporu.docx` altı
 - Dockerfile ve Vercel ayarları hazırlandı; gerçek Docker image dağıtımı/Vercel yayını doğrulanmadı.
 - Uygulama içi Chromium tarayıcısında art arda fare kilidi istekleri `NotAllowedError` / `UnknownError` üretebildi. Son istemcide istekler 2 saniyede birle sınırlandı, reddedilen istekler yakalandı ve kilit yokken sol tuşla sürükleyerek bakış kontrolü eklendi. Standart masaüstü tarayıcısı da kullanılabilir; her tarayıcıda pointer-lock davranışı garanti edilmez.
 - Donanımdan bağımsız FPS garantisi verilmez. Test tarayıcısında görülen FPS yalnızca bu makinenin o anki ölçümüdür.
-- Hasar ve kayıplar birlik seviyesinde hesaplanır; asker bazında bağımsız fizik ve animasyon iskeleti yoktur. Görsel birimler instancing ile çizilir.
+- Hasar ve kayıplar birlik seviyesinde hesaplanır; asker bazında bağımsız fizik yoktur. Son görsel sürümde iskelet pozları GPU üzerinde oynatılır; görsel birimler instancing ile çizilir.
 - Denge katsayıları başlangıç ayarıdır. İnsan oyuncularla faction/harita başına galibiyet, saldırı açısı, takviye ve hero etkisi ölçülerek ayarlanmalıdır.
 - Kayıt ve hesap sistemi yoktur. Tarayıcı yenilemesi sonrası oturum kimliği korunmaz; yeni oda gerekir. Sunucu restart'ı aktif maçları bitirir.

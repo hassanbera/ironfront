@@ -15,6 +15,16 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 - [x] GitHub'da mantıksal kaynak commitleri ve geliştirme kuralları.
 - [x] GitHub Actions taslağı; etkinleştirme yetki bekliyor.
 
+## Tamamlanan karakter ve animasyon iyileştirmesi
+
+- [x] CC0 KayKit karakterleri, silahlar, kaynak lisansı ve yeniden üretilebilir asset dönüştürücüsü.
+- [x] GPU üzerinde oynatılan 20 hareket/poz, üç geometri detay seviyesi ve faction kumaş renkleri.
+- [x] Koşu, silaha göre saldırı, yay çekme, blok, darbe, kaçınma, zıplama ve düşme animasyonları; sunucu olaylarıyla bağlantı.
+- [x] Oturan süvari pozu; eklemli prosedürel at/deve görünümü ve yürüyüşü.
+- [x] Hero omuz kamerası ve karakteri kapatmayan can paneli.
+- [x] Birlik Talimi sayfası; hareket seçimi, duraklatma, kamera ve 400 asker görünümü.
+- [x] Asset bütünlük kontrolü, üretim derlemesi, yerel tarayıcı ve bot maçı kontrolü. Ölçümler: [VISUAL_UPGRADE.md](VISUAL_UPGRADE.md).
+
 ## Sıradaki işler
 
 | Sıra | Planlanan parça | Bitirme ölçütü | Önerilen commit kapsamı |
@@ -23,7 +33,7 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 | 2 | Dört insanla bağlantı denemesi | Ayrı cihazlarda oda, dolu oda reddi, kopma, tekrar bağlanma ve maç sonu gözlemlenir; RTT ve hata kaydı tutulur | `test(net)` ve bulunan hatalara ayrı `fix(net)` |
 | 3 | Performans ölçümü | 400 asker ve ele geçirme sonrası daha yüksek kapasitede kare süresi, tick süresi ve ağ trafiği ölçülür; donanım kaydedilir | `perf(render)` veya `perf(server)`; önce/sonra ölçümü |
 | 4 | Denge denemeleri | Faction/harita/dizilim eşleşmeleri ve önden/yan/arka saldırılar tekrarlanır; katsayı değişikliği kanıtıyla açıklanır | `balance(rules)` ve ilgili kural testleri |
-| 5 | Hero ve görsel iyileştirme | Pointer lock, kamera ve girişler masaüstü tarayıcılarda doğrulanır; animasyon/geri bildirim kullanıcı testiyle değerlendirilir | `fix(hero)` veya `feat(client)` |
+| 5 | Görsellerin sonraki geçişi | Faction başına ayrı model/siluetler, daha doğal binekler ve yakın savaş temasları; mevcut hareketlerin kullanıcı testiyle değerlendirilmesi | `assets(characters)` veya `feat(client)` |
 | 6 | İnternete dağıtım | Kalıcı Go servisi HTTPS/WSS ile açılır; Vercel frontend bağlanır; dört ayrı cihazın aynı maçı oynadığı doğrulanır | `deploy` ayarları ve doğrulama kaydı |
 
 Bunlar henüz tamamlanmış özellikler değildir. Her parça ayrı uygulanır, doğrulanır ve commit edilir; sırf planı göstermek için boş commit atılmaz.
