@@ -1,5 +1,6 @@
 node_modules/
 frontend/dist/
+frontend/dist-combat/
 *.exe
 .env
 .env.local

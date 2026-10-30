@@ -4,21 +4,37 @@ Ekonomisiz, dört oyunculu, 3D RTS / üçüncü şahıs savaş oyununun ilk oyna
 
 ## Hemen oyna — Windows
 
-Hazır pakette `start-game.cmd` dosyasına çift tıkla. Oyun `http://localhost:8787` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır.
+Güncel hazır pakette `start-combat.cmd` dosyasına çift tıkla. Oyun `http://localhost:8790` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır. `start-game.cmd`, ilk paketi 8787 portunda açar.
 
-GitHub reposu kaynak kod içerir; `.exe`, `node_modules` ve `frontend/dist` repoya eklenmez. Repoyu klonladıysan aşağıdaki kaynaktan çalıştırma adımlarını kullan. Hazır Windows ZIP paketi ayrı bir yerel teslimdir; henüz GitHub Release yayımlanmadı.
+GitHub reposu kaynak kod içerir; `.exe`, `node_modules`, `frontend/dist` ve `frontend/dist-combat` repoya eklenmez. Repoyu klonladıysan aşağıdaki kaynaktan çalıştırma adımlarını kullan. Önceki hazır Windows ZIP paketi bu güncellemeyi içermez; henüz GitHub Release yayımlanmadı.
 
 - **Meydana çık:** 3 botla antrenman.
 - **Birlik Talimi:** ayrı sekmede kılıç, mızrak, yay ve baltaları yakından incele; koşu, saldırı, blok, darbe, kaçınma ve düşme hareketlerini seç. 400 asker görünümü de vardır.
 - **Oda oluştur:** oda kodunu arkadaşlarına gönder; her biri farklı faction seçip aynı sunucuda **Odaya katıl** üzerinden girer.
 - Oda sahibi boş slotları botlarla doldurabilir veya 2–4 gerçek oyuncuyla başlayabilir.
-- Aynı bilgisayarda ayrı tarayıcı sekmeleriyle dört oyuncu denenebilir. Aynı ağdaki arkadaşlar, sunucuyu çalıştıran bilgisayarın yerel IP adresi ve `8787` portunu kullanır. İşletim sisteminin mevcut ağ izinleri geçerlidir; paket güvenlik duvarını değiştirmez.
+- Aynı bilgisayarda ayrı tarayıcı sekmeleriyle dört oyuncu denenebilir. Aynı ağdaki arkadaşlar, sunucuyu çalıştıran bilgisayarın yerel IP adresi ve seçilen paketin portunu kullanır (`start-combat.cmd`: `8790`). İşletim sisteminin mevcut ağ izinleri geçerlidir; paket güvenlik duvarını değiştirmez.
 
 Oyun klavye ve fare içindir. Dar ekran menüsü uyarlanır, dokunmatik savaş kontrolü yoktur.
 
-### Kalabalık ve hero çarpışma sürümü
+### Temas ve saldırı zamanlaması paketi
 
-Güncel yerel sürüm `start-crowd.cmd` ile **http://localhost:8789** adresinde açılır. 8787 ve 8788'deki eski maçlar korunur. Repodan hazırlarken `npm run build`, ardından `server/` içinden `go build -o ../ironfront-server-crowd.exe .` çalıştır. Yeni asker çarpışmaları ve hedef işaretleri için istemci ile Go sunucusu birlikte güncel olmalıdır. [Kalabalık, kamera ve performans doğrulaması](docs/CROWD_VALIDATION.md).
+`start-combat.cmd` → **http://localhost:8790**. Saldıran ve vurulan asker gerçek konumundan seçilir; hazırlık, temas, ok uçuşu ve toparlanma sunucu zamanına bağlıdır. Çember savunmaları, hero zırh hesabı ve bot dizilim maliyetleri tutarlıdır. [Testler, önce/sonra performans ölçümleri ve sınırlar](docs/COMBAT_VALIDATION.md).
+
+GitHub kaynağından bu başlatıcı için:
+
+```sh
+cd frontend
+npm ci
+npm run build -- --outDir dist-combat
+cd ../server
+go build -o ../ironfront-server-combat.exe .
+```
+
+Ardından proje kökündeki `start-combat.cmd` çalıştırılır. `dist-combat`, önceki paketin `dist` çıktısından ayrıdır.
+
+### Önceki kalabalık ve hero çarpışma sürümü
+
+Önceki yerel sürüm `start-crowd.cmd` ile **http://localhost:8789** adresinde açılır. Repodan hazırlarken `npm run build`, ardından `server/` içinden `go build -o ../ironfront-server-crowd.exe .` çalıştır. İstemci ile Go sunucusu birlikte güncel olmalıdır. [Kalabalık, kamera ve performans doğrulaması](docs/CROWD_VALIDATION.md).
 
 ### Önceki hero sürümü
 
@@ -94,7 +110,7 @@ go run .
 
 Kahraman: **WASD / ok tuşları** kameraya göre hareket, **orta fare tuşu basılı + sürükle** kamera ve karakter dönüşü, **sol tık** saldırı, **sağ tık** önden blok, **Space** zıplama, **Shift + yön** o yöne kaçınma, yalnız **Shift** geri kaçınma, **Q** sınıf yeteneği. Arka arkaya tıklamalar kılıç savurma, çapraz kesiş ve saplama sırasını kullanır; 1,2 saniye ara verince sıra sıfırlanır. Hazırlık sırasında blok/kaçınma saldırıyı iptal eder. İsabet ve blok yazısı yalnızca sunucu teması doğruladığında çıkar. Ses düğmesi adım, savuruş, temas ve kalkan seslerini açar.
 
-Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiyorsa sol tuşla sürüklemek bakış yönünü değiştirir. Kahraman kontrolündeyken birlikler emirlerini sürdürür.
+Esc orta tuş sürüklemesini bırakır; dönmek için orta tuşa yeniden basılı tut. Kahraman kontrolündeyken birlikler emirlerini sürdürür.
 
 ## Yapı ve performans
 
@@ -102,6 +118,7 @@ Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiy
 - **20 Hz** sabit simülasyon, **10 Hz** durum yayını. Her oda en fazla dört oyuncu.
 - Emirler ve toplam can 25 kişilik birlik düzeyindedir. Her canlı asker ayrıca sabit kimlikli, hafif bir çarpışma dairesine sahiptir; 3 m komşuluk ızgarası askerleri ve hero'yu ayırır. Bineklerin gövdesi ve dizilim aralığı daha geniştir. Tam rigid-body fizik veya asker başına ayrı can sistemi yoktur.
 - Hero teması gerçek asker konumundan seçilir. Vurulan asker parlar, darbe tepkisi verir ve üzerinde hasar etiketi görünür; ölümcül vuruş aynı askeri düşürür. Kameranın önünü kapatan asker/binekler soluklaşır, kamerayı çevreleyen gövdeler gizlenir. Hero tam görünür kalır.
+- Birlik saldırıları da gerçek asker temasından seçilir. Hasar hazırlık sonrası, oklarda ise uçuş sonunda uygulanır. Oklar tek instanced çizimde gösterilir; yaylım başına üç temsili görsel, sunucuda tüm katılımcı askerlerin ayrı hasar hesabı vardır.
 - Grid A* ve yol sadeleştirme kayaları/üsleri dolaşır. Ağaç kümeleri örtü ve yavaşlatma bölgeleridir; her ağaç ayrı çarpışma nesnesi değildir.
 - Konumlar istemcide yumuşatılır. Girdi tahmini / rollback uygulanmadı; gecikme göstergesi gerçek ping ölçer.
 - Bağlantı başına 4 KB mesaj sınırı, komut hız sınırı, oda limiti, origin denetimi, yavaş istemcide eski snapshot düşürme ve boş odaların 2 dakika sonra temizlenmesi vardır.
