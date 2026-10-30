@@ -82,6 +82,9 @@ export class Network {
       } else if (msg.type === "state") this.onState(msg);
       else if (msg.type === "error") {
         this.onError(msg.message);
+        // A rejected join is complete even if a proxy delays the close frame.
+        // Release the connecting UI now so the player can choose another faction.
+        if (!this.token) this.disconnect();
       } else if (msg.type === "pong")
         this.latency = Math.round(performance.now() - msg.stamp);
     };
