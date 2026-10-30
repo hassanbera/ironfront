@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+.git
+.vercel
+*.exe
+*.zip
+.env*
+**/.env*

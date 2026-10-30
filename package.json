@@ -1,0 +1,11 @@
+{
+  "name": "ironfront",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "check": "npm --prefix frontend run check",
+    "test:net": "node scripts/network-test.mjs"
+  }
+}
