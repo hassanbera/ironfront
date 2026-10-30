@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+Dizilim tutarlılığı düzeltildi: Viking/Arab çemberleri bütün yönlerde sırasıyla %18/%14 savunma sağlar. Hero vuruşları da aynı dizilim ve zırh hesabından geçer; botlar oyuncularla aynı 1,4 saniyelik yeniden dizilme cezasını kullanır. 12 dizilimin üç yönü, hero çember teması ve bot geçişi test edildi; tüm Go testleri, vet ve frontend üretim derlemesi geçti.
+
 Hero yürüyüş kamerası, karakterle aynı karede hesaplanan tek bir konumu takip eder. Konum/zıplama için kısa snapshot tamponu ve orta tuşla basılı sürükleme kontrolü eklendi. Tarayıcı ölçümü ve kontroller: [CAMERA_CONTROLS.md](CAMERA_CONTROLS.md).
 
 Kalabalık geçişi tamamlandı: sabit asker kimlikleri, komşuluk ızgarasıyla dairesel ayrıştırma, hero için alt adımlı çarpışma, gerçek asker konumuna isabet, kamerayı kapatan gövdeleri soluklaştırma ve hero görünümünde detay/veri aktarımı optimizasyonu. Yerel 400 asker ölçümleri ve sınırlar: [CROWD_VALIDATION.md](CROWD_VALIDATION.md).

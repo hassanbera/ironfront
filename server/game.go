@@ -454,10 +454,12 @@ func (g *Game) moveSquads(dt float64) {
 		}
 	}
 }
-func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
-	as, bs := g.spec(a), g.spec(b)
-	af, bf := g.formation(a), g.formation(b)
-	bearing := math.Atan2(a.X-b.X, a.Z-b.Z)
+
+// Shared by soldier and hero attacks. A circle has no exposed defensive side;
+// flank identity remains available for class counters and the notice window.
+func (g *Game) defenseMultiplier(b *Squad, x, z float64) (float64, string) {
+	bf := g.formation(b)
+	bearing := math.Atan2(x-b.X, z-b.Z)
 	arc := math.Abs(angle(bearing - b.Facing))
 	m := 1.0
 	flank := "front"
@@ -470,9 +472,16 @@ func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
 	} else {
 		m = bf.Front
 	}
-	if bf.Shape == "circle" && flank == "side" {
-		m = 0.95
+	if bf.Shape == "circle" {
+		m = bf.Front
 	}
+	return m * (1 - g.spec(b).Armor), flank
+}
+
+func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
+	as, bs := g.spec(a), g.spec(b)
+	af, bf := g.formation(a), g.formation(b)
+	m, flank := g.defenseMultiplier(b, a.X, a.Z)
 	if as.Kind == "lancer" && bs.Kind == "cavalry" {
 		if flank == "front" {
 			m *= 0.62
@@ -518,7 +527,7 @@ func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
 	if g.Time < a.Reform {
 		m *= 0.8
 	}
-	return m * af.Attack * (1 - bs.Armor), flank
+	return m * af.Attack, flank
 }
 func (g *Game) damageSquad(s *Squad, damage float64, owner, attacker int, flank string) {
 	if s.Alive == 0 {
@@ -803,9 +812,9 @@ func (g *Game) bots() {
 			}
 			terrain := g.terrain(s.X, s.Z)
 			if terrain == "forest" {
-				s.Formation = 2
+				g.command(p.ID, Command{Type: "formation", IDs: []int{s.ID}, Formation: 2})
 			} else if g.spec(s).Kind == "spear" {
-				s.Formation = 1
+				g.command(p.ID, Command{Type: "formation", IDs: []int{s.ID}, Formation: 1})
 			}
 		}
 	}

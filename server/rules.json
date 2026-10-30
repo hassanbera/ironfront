@@ -18,7 +18,7 @@
         {"name":"Çift Baltalı Berserker","short":"Berserker","role":"Hızlı baskın piyadesi","kind":"berserker","hp":115,"damage":10,"armor":0.04,"speed":4.5,"range":8,"cooldown":29,"notice":0.9}],
       "formations":[
         {"name":"Kalkan Çemberi","shape":"circle","description":"Her yönden −%18 hasar; −%30 hız ve −%10 saldırı.","speed":0.70,"attack":0.90,"front":0.82,"rear":0.58},
-        {"name":"Yaban Domuzu","shape":"wedge","description":"+%15 yakın dövüş; arkadan +%25 hasar alır.","speed":1.02,"attack":1.15,"front":1,"rear":1.25},
+        {"name":"Yaban Domuzu","shape":"wedge","description":"+%15 yakın dövüş; arka saldırının ×2 çarpanına ayrıca +%25 hasar alır.","speed":1.02,"attack":1.15,"front":1,"rear":1.25},
         {"name":"Dağınık Akın","shape":"loose","description":"Menzilli ateşe −%25 hasar; yakın dövüşte zayıf.","speed":1.1,"attack":0.96,"front":1.12,"rear":0.90}]},
     {"id":2,"name":"Arabs","title":"Kumların muhafızları","color":"#64bb91","accent":"#8ed9b3","emblem":"sun","description":"Deve süvarisi ve esnek piyade hatları. Kumda hızlı, yüksek arazide tehlikeli; sıkışık geçitlerde dikkatli ol.",
       "units":[
@@ -28,7 +28,7 @@
         {"name":"Kılıçlı Okçu","short":"Kılıçlı okçu","role":"Menzilli · kılıç","kind":"archer","hp":80,"damage":6.2,"armor":0.12,"speed":3.8,"range":28,"cooldown":18,"notice":1.1}],
       "formations":[
         {"name":"Hilal","shape":"crescent","description":"Yan saldırıda +%20 hasar; önden +%8 hasar alır.","speed":1,"attack":1,"front":1.08,"rear":0.92},
-        {"name":"Çöl Yıldızı","shape":"circle","description":"Her yönden savunma; −%24 hareket hızı.","speed":0.76,"attack":0.92,"front":0.86,"rear":0.60},
+        {"name":"Çöl Yıldızı","shape":"circle","description":"Her yönden −%14 hasar; −%24 hız ve −%8 saldırı.","speed":0.76,"attack":0.92,"front":0.86,"rear":0.60},
         {"name":"Serap Hattı","shape":"loose","description":"+%12 hız; menzilli ateşe −%25 hasar.","speed":1.12,"attack":0.95,"front":1.15,"rear":0.94}]},
     {"id":3,"name":"Turks","title":"Bozkırın gölgesi","color":"#df7969","accent":"#f3a28e","emblem":"moon","description":"Atlı okçularla yıprat, kargılılarla arkadan vur. Çeviklik ve zamanlama ister; cephede ağır zırha yenilir.",
       "units":[
@@ -38,7 +38,7 @@
         {"name":"Kılıçlı Okçu","short":"Kılıçlı okçu","role":"Menzilli · kılıç","kind":"archer","hp":75,"damage":6,"armor":0.10,"speed":4,"range":28,"cooldown":18,"notice":1.0}],
       "formations":[
         {"name":"Turan Hilali","shape":"crescent","description":"Yan/arka saldırıda +%20; önden savunma zayıf.","speed":1.05,"attack":1,"front":1.15,"rear":0.95},
-        {"name":"Bozkır Yayı","shape":"loose","description":"Atlı okçu hareket ederken tam hasar; −%25 ok hasarı.","speed":1.12,"attack":0.94,"front":1.15,"rear":0.90},
+        {"name":"Bozkır Yayı","shape":"loose","description":"Atlı okçuda hareket cezası yok; −%6 saldırı, −%25 ok hasarı.","speed":1.12,"attack":0.94,"front":1.15,"rear":0.90},
         {"name":"Kargı Kaması","shape":"wedge","description":"Kargıcı baskınında +%20; cepheden hasara açık.","speed":1.08,"attack":1.06,"front":1.08,"rear":1.12}]}
   ],
   "heroes": [

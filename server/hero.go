@@ -214,11 +214,8 @@ func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
 				continue
 			}
 			usedSquads[s.ID] = true
-			flank := "front"
-			if math.Abs(angle(math.Atan2(h.X-t.x, h.Z-t.z)-s.Facing)) > 2.15 {
-				flank = "rear"
-				damage *= 1.6
-			}
+			defense, flank := g.defenseMultiplier(s, h.X, h.Z)
+			damage *= defense
 			before := s.HP
 			g.damageSquad(s, damage, h.Owner, -100-h.Owner, flank)
 			syncSlots(s, t.slot)
