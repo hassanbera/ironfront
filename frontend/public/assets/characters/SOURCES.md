@@ -11,6 +11,8 @@ IRONFRONT uses the source body geometry, textures, socketed weapons and animatio
 
 These are derived assets. Source textures are extracted unchanged. `meshoptimizer` 1.0.1 (MIT) is a development-only simplification dependency and is not shipped in the game JavaScript.
 
+The hero control update extends the atlas to 33 clips: backward walking, left/right strafing, backward/side dodges, diagonal attack, jump start/landing and four guarded locomotion variants. Guarded movement combines the source Blocking upper-body pose with source locomotion legs. Capes are shortened to 72% of their original length and narrowed to 90% so steps remain visible. Green hood texels use the faction color while skin texels retain their source texture. The far ranger body now contains 400 triangles.
+
 To regenerate, place the three GLBs and the original `LICENSE.txt` in a local source directory, install frontend dependencies with `npm ci`, and run from the repository root:
 
 ```sh

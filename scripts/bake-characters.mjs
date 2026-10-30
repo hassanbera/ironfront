@@ -20,6 +20,10 @@ const clips = {
   shoot:'2H_Ranged_Shooting', throw:'Throw', block:'Blocking', blockHit:'Block_Hit',
   hit:'Hit_A', death:'Death_A', deathAlt:'Death_B', dodge:'Dodge_Forward', jump:'Jump_Idle', ride:'Sit_Chair_Pose',
   ride_slash:'1H_Melee_Attack_Slice_Horizontal', ride_stab:'1H_Melee_Attack_Stab', ride_shoot:'2H_Ranged_Shooting',
+  back:'Walking_Backwards', strafeLeft:'Running_Strafe_Left', strafeRight:'Running_Strafe_Right',
+  dodgeBack:'Dodge_Backward', dodgeLeft:'Dodge_Left', dodgeRight:'Dodge_Right',
+  backslash:'1H_Melee_Attack_Slice_Diagonal', jumpStart:'Jump_Start', land:'Jump_Land',
+  guardRun:'Running_A', guardBack:'Walking_Backwards', guardLeft:'Running_Strafe_Left', guardRight:'Running_Strafe_Right',
 };
 const hashes=[];
 for (const [name,file] of [['knight','Knight'],['viking','Barbarian'],['ranger','Rogue_Hooded']]) {
@@ -61,7 +65,12 @@ for (const [name,file] of [['knight','Knight'],['viking','Barbarian'],['ranger',
     for(const a of Object.keys(g.attributes))if(!['position','normal','uv','skinIndex','skinWeight','paint'].includes(a))g.deleteAttribute(a);
     return g.toNonIndexed();
   }
-  for(const p of pieces)body.push(attributes(p.geometry.clone(),skeleton.bones.length+extras.indexOf(p),/Cape/.test(p.name)?[1,1,1,2]:p.isSkinnedMesh&&!/Head/.test(p.name)?[1,1,1,3]:[1,1,1,0]));
+  for(const p of pieces) {
+    const g=p.geometry.clone();
+    // Keep feet and side steps visible from the third-person camera.
+    if(/Cape/.test(p.name)) { g.computeBoundingBox();const top=g.boundingBox.max.y,positions=g.attributes.position;for(let i=0;i<positions.count;i++){positions.setY(i,top+(positions.getY(i)-top)*.72);positions.setX(i,positions.getX(i)*.9);}g.computeVertexNormals(); }
+    body.push(attributes(g,skeleton.bones.length+extras.indexOf(p),/Cape/.test(p.name)?[1,1,1,2]:p.isSkinnedMesh&&!/Head/.test(p.name)?[1,1,1,3]:[1,1,1,0]));
+  }
   const geometry=mergeGeometries(body);
   const mixer=new T.AnimationMixer(scene);
   const animations={}, mats=[];
@@ -69,6 +78,9 @@ for (const [name,file] of [['knight','Knight'],['viking','Barbarian'],['ranger',
   const sit=mixer.clipAction(sourceClips.get('Sit_Chair_Pose'));sit.play();mixer.setTime(0);
   const seated=skeleton.bones.filter(b=>/^(upperleg|lowerleg|foot|toes)/.test(b.name)).map(b=>({bone:b,rotation:b.quaternion.clone()}));
   const hip=scene.getObjectByName('hips'),sitHeight=hip.position.clone();
+  mixer.stopAllAction();
+  const guard=mixer.clipAction(sourceClips.get('Blocking'));guard.play();mixer.setTime(.25);
+  const guarding=skeleton.bones.filter(b=>/^(spine|chest|upperarm|lowerarm|hand)/.test(b.name)).map(b=>({bone:b,rotation:b.quaternion.clone()}));
   mixer.stopAllAction();
   const tmp=new T.Matrix4();
   const v0=new T.Vector3(),v1=new T.Vector3(),v2=new T.Vector3(),q0=new T.Quaternion(),q1=new T.Quaternion();
@@ -107,6 +119,7 @@ for (const [name,file] of [['knight','Knight'],['viking','Barbarian'],['ranger',
     for(let frame=0;frame<frames;frame++) {
       mixer.setTime(clip.duration>0?Math.min(clip.duration-0.00001,frame/(frames-1)*clip.duration):0);
       const restored=[];
+      if(key.startsWith('guard')) for(const part of guarding) { const node=part.bone;restored.push({node,position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone()});node.quaternion.copy(part.rotation); }
       if(key==='shoot'||key==='ride_shoot') for(const nodeName of ['upperarml','lowerarml','upperarmr','lowerarmr','handslotl','handslotr']) { const node=scene.getObjectByName(nodeName);restored.push({node,position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone()}); }
       if(key.startsWith('ride_')) { for(const part of seated)part.bone.quaternion.copy(part.rotation);hip.position.copy(sitHeight); }
       if(key==='shoot'||key==='ride_shoot') bowPose(frame/(frames-1));

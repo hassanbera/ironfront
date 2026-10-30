@@ -14,6 +14,7 @@ for(const name of ['knight','viking','ranger']){
     assert.ok(clip.start>=0&&clip.start+clip.frames<=meta.frames);
   }
   for(const required of ['idle','walk','run','slash','stab','shoot','block','hit','death','dodge','jump','ride','ride_slash','ride_stab','ride_shoot'])assert.ok(meta.animations[required]);
+  for(const required of ['back','strafeLeft','strafeRight','dodgeBack','dodgeLeft','dodgeRight','backslash','land','guardRun','guardBack','guardLeft','guardRight'])assert.ok(meta.animations[required],`Missing directional clip ${required}`);
   const data={};
   for(const [kind,attributes]of Object.entries(meta.geometries)){
     const fields={};

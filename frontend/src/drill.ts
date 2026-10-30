@@ -15,10 +15,16 @@ const motions: [string, string][] = [
   ["idle", "Hazır"],
   ["walk", "Yürü"],
   ["run", "Koş"],
+  ["back", "Geri yürü"],
+  ["strafeLeft", "Sol adım"],
+  ["strafeRight", "Sağ adım"],
   ["attack", "Saldır"],
   ["block", "Blok"],
   ["hit", "Darbe"],
   ["dodge", "Kaçın"],
+  ["dodgeBack", "Geri kaçın"],
+  ["dodgeLeft", "Sola kaçın"],
+  ["dodgeRight", "Sağa kaçın"],
   ["jump", "Zıpla"],
   ["death", "Düş"],
 ];
@@ -148,7 +154,9 @@ function animate(now: number) {
         gear = outfit(owner, kind),
         action = motion === "attack" ? gear.attack : motion;
       const duration = chars.duration(gear.model, action),
-        once = ["attack", "hit", "dodge", "death"].includes(motion),
+        once =
+          ["attack", "hit", "death"].includes(motion) ||
+          motion.startsWith("dodge"),
         cycle = duration + 0.7;
       const phase = once
         ? (time - started) % cycle
