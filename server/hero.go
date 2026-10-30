@@ -169,7 +169,7 @@ func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
 			return
 		}
 		deviation := math.Abs(angle(math.Atan2(dx, dz) - h.Facing))
-		if deviation > arc || !g.nav.line(Vec{h.X, h.Z}, Vec{c.x, c.z}) {
+		if deviation > arc || !g.nav.clearShot(h.X, h.Z, c.x, c.z) {
 			return
 		}
 		c.score = distance + deviation*2
@@ -214,10 +214,11 @@ func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
 				continue
 			}
 			usedSquads[s.ID] = true
-			defense, flank := g.defenseMultiplier(s, h.X, h.Z)
+			defense, flank := g.defenseMultiplierAt(s, h.X, h.Z, t.x, t.z)
 			damage *= defense
 			before := s.HP
 			g.damageSquad(s, damage, h.Owner, -100-h.Owner, flank)
+			s.HitSlots |= 1 << t.slot
 			syncSlots(s, t.slot)
 			contact.Damage = before - s.HP
 		} else if target := t.hero; target != nil {

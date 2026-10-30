@@ -91,6 +91,8 @@ type Squad struct {
 	Respawn      float64         `json:"respawn"`
 	Flash        float64         `json:"flash"`
 	AttackAt     float64         `json:"attackAt"`
+	AttackSlots  uint32          `json:"attackSlots"`
+	HitSlots     uint32          `json:"hitSlots"`
 	AimX         float64         `json:"aimX"`
 	AimZ         float64         `json:"aimZ"`
 	Flank        string          `json:"flank"`
@@ -207,6 +209,7 @@ type Game struct {
 	Crowd      [][3]int `json:"crowd,omitempty"`
 	bodies     []*SoldierBody
 	crowdHeads [crowdGridN * crowdGridN]int
+	contacts   []unitContact
 }
 type Command struct {
 	Type      string    `json:"type"`

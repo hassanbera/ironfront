@@ -807,7 +807,12 @@ export class World {
               (t) => t.kind === "soldier" && t.id === squad.id,
             ),
         );
-        if (squad.hp < old.hp && !exactHit) this.hits.set(squad.id, this.time);
+        if (squad.hp < old.hp) {
+          if (squad.hitSlots && squad.flash !== old.flash) {
+            for (let slot=0;slot<25;slot++)
+              if (squad.hitSlots & (1<<slot)) this.soldierHits.set(squad.id*32+slot,this.time);
+          } else if (!exactHit) this.hits.set(squad.id, this.time);
+        }
         if (squad.alive < old.alive) {
           const shape =
             rules.factions[old.owner].formations[old.formation].shape;
@@ -1410,7 +1415,8 @@ export class World {
             this.time - (this.hits.get(s.id) ?? -100) - (i % 4) * 0.03,
           );
           const attacking =
-            s.attackAt > 0 && attackAge >= 0 && attackAge < 0.82;
+            s.attackAt > 0 && attackAge >= 0 && attackAge < 0.82 &&
+            (s.attackSlots === undefined || (s.attackSlots & (1<<i)) !== 0);
           const motion =
             exactHitAge < 0.28 && !mounted
               ? "hit"

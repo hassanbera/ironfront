@@ -129,6 +129,7 @@ func (g *Game) stepCrowd(dt float64) {
 	for _, s := range g.Squads {
 		syncSlots(s, -1)
 		spec := g.spec(s)
+		shape := g.formation(s).Shape
 		scale, r := 1., .54
 		if mounted(spec.Kind) {
 			scale, r = 1.9, 1.05
@@ -136,7 +137,7 @@ func (g *Game) stepCrowd(dt float64) {
 		sn, cs := math.Sin(s.Facing), math.Cos(s.Facing)
 		maxStep := spec.Speed * dt * 1.4
 		for _, slot := range s.Slots {
-			ox, oz := formationOffset(g.formation(s).Shape, slot)
+			ox, oz := formationOffset(shape, slot)
 			ox *= scale
 			oz *= scale
 			x, z := s.X+ox*cs+oz*sn, s.Z-ox*sn+oz*cs

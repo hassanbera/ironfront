@@ -204,12 +204,23 @@ func TestNoticePreventsInstantRearRetaliation(t *testing.T) {
 	attacker.Z = 53
 	attacker.Facing = 0
 	defender.Notice = 2
+	// Place actual combatants; moving only squad centers no longer creates contact.
+	g.Time = 1
+	g.nav = &Nav{}
+	g.Heroes = nil
+	g.Bases = nil
+	defender.Alive, attacker.Alive = 1, 1
+	defender.HP, attacker.HP = g.spec(defender).HP, g.spec(attacker).HP
+	defender.Slots, attacker.Slots = []int{0}, []int{0}
+	g.bodies = []*SoldierBody{contactBody(defender, 0, 0, 60), contactBody(attacker, 0, 0, 58)}
+	g.rebuildCrowdGrid()
 	before := attacker.HP
+	defenderBefore := defender.HP
 	g.combat()
 	if attacker.HP != before {
 		t.Fatal("defender attacked behind itself before turning")
 	}
-	if defender.HP >= 3875 {
+	if defender.HP >= defenderBefore {
 		t.Fatal("rear attacker should deal damage")
 	}
 }

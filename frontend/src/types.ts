@@ -35,6 +35,8 @@ export interface Squad {
   respawn: number;
   flash: number;
   attackAt: number;
+  attackSlots?: number;
+  hitSlots?: number;
   aimX: number;
   aimZ: number;
   flank: string;

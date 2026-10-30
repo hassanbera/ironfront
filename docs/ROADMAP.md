@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+Birlik teması gerçek asker gövdelerinden hesaplanır: yalnız menzil/açı/engel denetimini geçen askerler saldırır, yakındaki askerler merkezleri uzakta olsa da çatışabilir. Vurulan slot hasar tepkisini ve ölümü taşır. Hero blok/kaçınma, üs yüzeyi, engeller ve sıfır allocation ile temas sorgusu testleri; tüm Go testleri/vet, üretim derlemesi, dört WebSocket istemcisi ve tarayıcıda ön/arka sıra ayrımı geçti. Saldırı hazırlık/temas zamanlaması sonraki parçadır.
+
 Dizilim tutarlılığı düzeltildi: Viking/Arab çemberleri bütün yönlerde sırasıyla %18/%14 savunma sağlar. Hero vuruşları da aynı dizilim ve zırh hesabından geçer; botlar oyuncularla aynı 1,4 saniyelik yeniden dizilme cezasını kullanır. 12 dizilimin üç yönü, hero çember teması ve bot geçişi test edildi; tüm Go testleri, vet ve frontend üretim derlemesi geçti.
 
 Hero yürüyüş kamerası, karakterle aynı karede hesaplanan tek bir konumu takip eder. Konum/zıplama için kısa snapshot tamponu ve orta tuşla basılı sürükleme kontrolü eklendi. Tarayıcı ölçümü ve kontroller: [CAMERA_CONTROLS.md](CAMERA_CONTROLS.md).

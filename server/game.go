@@ -248,6 +248,8 @@ func (g *Game) command(owner int, c Command) error {
 		for _, id := range c.IDs {
 			for i, s := range g.Squads {
 				if s.ID == id && s.Owner == owner && !s.Engaged {
+					s.Alive, s.HP = 0, 0
+					syncSlots(s, -1)
 					g.Squads = append(g.Squads[:i], g.Squads[i+1:]...)
 					break
 				}
@@ -395,7 +397,13 @@ func (g *Game) moveSquads(dt float64) {
 			d := dist(s.X, s.Z, enemy.X, enemy.Z)
 			desired = math.Atan2(enemy.X-s.X, enemy.Z-s.Z)
 			s.Engaged = d < rangeV+2
-			if d <= rangeV && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z}) {
+			inReach := false
+			if ranged(spec.Kind) {
+				inReach = d <= rangeV && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z})
+			} else {
+				inReach = g.hasMeleeContact(s)
+			}
+			if inReach {
 				stop = true
 			} else if s.Order != "hold" && g.Time > s.Repath {
 				s.Path = g.nav.path(s.X, s.Z, enemy.X, enemy.Z)
@@ -408,7 +416,11 @@ func (g *Game) moveSquads(dt float64) {
 				b := g.Bases[id]
 				if b.Owner != s.Owner && b.HP > 0 {
 					desired = math.Atan2(b.X-s.X, b.Z-s.Z)
-					if dist(s.X, s.Z, b.X, b.Z) < rangeV+7 {
+					inReach := dist(s.X, s.Z, b.X, b.Z) < rangeV+7
+					if !ranged(spec.Kind) {
+						inReach = g.hasMeleeContact(s)
+					}
+					if inReach {
 						stop = true
 						s.Engaged = true
 					}
@@ -458,8 +470,11 @@ func (g *Game) moveSquads(dt float64) {
 // Shared by soldier and hero attacks. A circle has no exposed defensive side;
 // flank identity remains available for class counters and the notice window.
 func (g *Game) defenseMultiplier(b *Squad, x, z float64) (float64, string) {
+	return g.defenseMultiplierAt(b, x, z, b.X, b.Z)
+}
+func (g *Game) defenseMultiplierAt(b *Squad, x, z, tx, tz float64) (float64, string) {
 	bf := g.formation(b)
-	bearing := math.Atan2(x-b.X, z-b.Z)
+	bearing := math.Atan2(x-tx, z-tz)
 	arc := math.Abs(angle(bearing - b.Facing))
 	m := 1.0
 	flank := "front"
@@ -479,9 +494,12 @@ func (g *Game) defenseMultiplier(b *Squad, x, z float64) (float64, string) {
 }
 
 func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
+	return g.attackMultiplierAt(a, b, a.X, a.Z, b.X, b.Z)
+}
+func (g *Game) attackMultiplierAt(a, b *Squad, ax, az, bx, bz float64) (float64, string) {
 	as, bs := g.spec(a), g.spec(b)
 	af, bf := g.formation(a), g.formation(b)
-	m, flank := g.defenseMultiplier(b, a.X, a.Z)
+	m, flank := g.defenseMultiplierAt(b, ax, az, bx, bz)
 	if as.Kind == "lancer" && bs.Kind == "cavalry" {
 		if flank == "front" {
 			m *= 0.62
@@ -534,6 +552,9 @@ func (g *Game) damageSquad(s *Squad, damage float64, owner, attacker int, flank 
 		return
 	}
 	old := s.Alive
+	if s.Flash != g.Time {
+		s.HitSlots = 0
+	}
 	spec := g.spec(s)
 	s.HP = math.Max(0, s.HP-damage)
 	s.Alive = int(math.Ceil(s.HP / spec.HP))
@@ -555,86 +576,6 @@ func (g *Game) damageSquad(s *Squad, damage float64, owner, attacker int, flank 
 		s.Path = nil
 		s.Order = "hold"
 		g.event(s.Owner, "loss", spec.Short+" birliği düştü · takviye bekleniyor")
-	}
-}
-func (g *Game) combat() {
-	type hit struct {
-		s         *Squad
-		damage    float64
-		owner, id int
-		flank     string
-	}
-	hits := []hit{}
-	for _, s := range g.Squads {
-		if s.Alive == 0 || g.Time < s.AttackTimer {
-			continue
-		}
-		if (s.Order == "move" || s.Order == "retreat") && g.spec(s).Kind != "horseArcher" {
-			continue
-		}
-		rangeV := g.rangeOf(s)
-		target := g.nearestEnemy(s, rangeV)
-		if s.Target > 0 && s.Target < 1000 && s.Order == "attack" {
-			t := g.squad(s.Target)
-			if t != nil && t.Owner != s.Owner && t.Alive > 0 && dist(s.X, s.Z, t.X, t.Z) <= rangeV {
-				target = t
-			}
-		}
-		if target != nil && math.Abs(angle(math.Atan2(target.X-s.X, target.Z-s.Z)-s.Facing)) < 1.4 && g.nav.line(Vec{s.X, s.Z}, Vec{target.X, target.Z}) {
-			f, flank := g.attackMultiplier(s, target)
-			hits = append(hits, hit{target, g.spec(s).Damage * float64(s.Alive) * 0.5 * f, s.Owner, s.ID, flank})
-			s.AimX = target.X
-			s.AimZ = target.Z
-			s.AttackAt = g.Time
-			s.AttackTimer = g.Time + 0.5
-			s.Travel = 0
-			continue
-		}
-		attacked := false
-		for _, h := range g.Heroes {
-			if h.Owner != s.Owner && h.HP > 0 && dist(s.X, s.Z, h.X, h.Z) < rangeV && math.Abs(angle(math.Atan2(h.X-s.X, h.Z-s.Z)-s.Facing)) < 1.4 {
-				g.damageHero(h, g.spec(s).Damage*float64(s.Alive)*0.5*0.32, s.X, s.Z)
-				s.AimX = h.X
-				s.AimZ = h.Z
-				s.AttackAt = g.Time
-				attacked = true
-				break
-			}
-		}
-		if attacked {
-			continue
-		}
-		for _, b := range g.Bases {
-			if b.Stage == "active" && b.Owner != s.Owner && dist(s.X, s.Z, b.X, b.Z) < rangeV+7 && s.Order != "hold" {
-				b.HP = math.Max(0, b.HP-g.spec(s).Damage*float64(s.Alive)*0.5*0.8)
-				s.AimX = b.X
-				s.AimZ = b.Z
-				s.AttackAt = g.Time
-				if b.HP == 0 {
-					g.event(s.Owner, "base", "Üs yıkıldı. Bölgede kalarak faaliyete geçir.")
-					b.Stage = "ruined"
-					b.Owner = -1
-					b.Progress = 0
-					b.Captor = -1
-				}
-				break
-			}
-		}
-	}
-	for _, h := range hits {
-		g.damageSquad(h.s, h.damage, h.owner, h.id, h.flank)
-	}
-	// A garrison discourages lone heroes from taking a healthy base.
-	for _, b := range g.Bases {
-		if b.Stage != "active" || b.Owner < 0 {
-			continue
-		}
-		for _, s := range g.Squads {
-			if s.Owner != b.Owner && s.Alive > 0 && dist(s.X, s.Z, b.X, b.Z) < 19 {
-				g.damageSquad(s, 26, b.Owner, -10-b.ID, "front")
-				break
-			}
-		}
 	}
 }
 func (g *Game) presence(x, z, r float64) (int, bool) {
