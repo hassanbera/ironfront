@@ -1,0 +1,67 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: server/go.sum
+      - name: Install client dependencies
+        run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - name: Typecheck and build client
+        run: npm run build
+        working-directory: frontend
+      - name: Test server with race detector
+        run: go test -race -count=1 ./...
+        working-directory: server
+      - name: Vet server
+        run: go vet ./...
+        working-directory: server
+      - name: Build server
+        run: go build -trimpath -o "$RUNNER_TEMP/ironfront-server" .
+        working-directory: server
+      - name: Verify four real WebSocket clients
+        env:
+          PORT: '9878'
+          STATIC_DIR: ${{ github.workspace }}/frontend/dist
+          TEST_WS_URL: ws://127.0.0.1:9878/ws
+        run: |
+          "$RUNNER_TEMP/ironfront-server" > "$RUNNER_TEMP/ironfront-server.log" 2>&1 &
+          game_pid=$!
+          trap 'kill "$game_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:9878/health > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            cat "$RUNNER_TEMP/ironfront-server.log"
+            exit 1
+          fi
+          curl --fail --silent http://127.0.0.1:9878/ > /dev/null
+          node scripts/network-test.mjs
