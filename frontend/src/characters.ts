@@ -1,4 +1,5 @@
 import * as T from "three";
+import { fadeDeclarations, fadeDiscard } from "./visibility";
 
 type Clip = { start: number; frames: number; duration: number };
 type Field = { offset: number; length: number; size: number };
@@ -13,6 +14,7 @@ type Batch = {
   mesh: T.InstancedMesh;
   pose: T.InstancedBufferAttribute;
   count: number;
+  visibility: T.InstancedBufferAttribute;
 };
 type Model = {
   meta: Metadata;
@@ -45,6 +47,8 @@ export type Character = {
   size?: number;
   hit?: number;
   lean?: number;
+  visibility?: number;
+  focus?: boolean;
 };
 const matrix = new T.Object3D();
 const CAPACITY = 1100;
@@ -61,6 +65,7 @@ export class Characters {
   private now = 0;
   private disposed = false;
   private eye = new T.Vector3();
+  private closeCombat = false;
 
   async load() {
     await Promise.all(
@@ -115,6 +120,8 @@ export class Characters {
           attribute vec4 skinWeight;
           attribute vec4 pose;
           attribute vec4 paint;
+          attribute float visibility;
+          ${fadeDeclarations}
           varying vec4 vPaint;
           varying float vHit;
           mat4 poseBone(float joint, float frame) {
@@ -141,6 +148,7 @@ export class Characters {
           if(pose.z < .999) actorSkin = actorSkin * pose.z + poseSkin(pose.y) * (1.0-pose.z);
           vPaint = paint;
           vHit = pose.w;
+          vVisibility = visibility;
         `,
           );
           shader.vertexShader = shader.vertexShader.replace(
@@ -153,6 +161,15 @@ export class Characters {
             "#include <begin_vertex>",
             "vec3 transformed = (actorSkin * vec4(position,1.0)).xyz;",
           );
+          shader.fragmentShader = shader.fragmentShader
+            .replace(
+              "#include <common>",
+              "#include <common>\n" + fadeDeclarations,
+            )
+            .replace(
+              "#include <clipping_planes_fragment>",
+              "#include <clipping_planes_fragment>\n" + fadeDiscard,
+            );
           if (surface) {
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <common>",
@@ -214,6 +231,11 @@ export class Characters {
             4,
           ).setUsage(T.DynamicDrawUsage);
           geo.setAttribute("pose", pose);
+          const visibility = new T.InstancedBufferAttribute(
+            new Float32Array(CAPACITY).fill(1),
+            1,
+          ).setUsage(T.DynamicDrawUsage);
+          geo.setAttribute("visibility", visibility);
           const mesh = new T.InstancedMesh(geo, material, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -222,7 +244,7 @@ export class Characters {
           mesh.customDepthMaterial = depth;
           mesh.frustumCulled = false;
           mesh.count = 0;
-          model.batches.set(kind, { mesh, pose, count: 0 });
+          model.batches.set(kind, { mesh, pose, visibility, count: 0 });
           this.group.add(mesh);
         }
         this.models.set(name, model);
@@ -235,10 +257,11 @@ export class Characters {
     this.ready = true;
   }
 
-  begin(time: number, eye?: T.Vector3) {
+  begin(time: number, eye?: T.Vector3, closeCombat = false) {
     this.now = time;
     if (eye) this.eye.copy(eye);
     this.count = 0;
+    this.closeCombat = closeCombat;
     for (const model of this.models.values())
       for (const batch of model.batches.values()) batch.count = 0;
   }
@@ -285,8 +308,13 @@ export class Characters {
       (actor.x - this.eye.x) ** 2 +
       (actor.y - this.eye.y) ** 2 +
       (actor.z - this.eye.z) ** 2;
-    const detail =
-      distance > 2025 ? "bodyFar" : distance > 625 ? "bodyMid" : "body";
+    const detail = actor.focus
+      ? "body"
+      : distance > (this.closeCombat ? 900 : 2025)
+        ? "bodyFar"
+        : distance > (this.closeCombat ? 144 : 625)
+          ? "bodyMid"
+          : "body";
     for (const kind of [detail, actor.weapon]) {
       const batch =
         model.batches.get(kind) ||
@@ -296,6 +324,7 @@ export class Characters {
       batch.mesh.setMatrixAt(i, matrix.matrix);
       batch.mesh.setColorAt(i, actor.color);
       batch.pose.setXYZW(i, frame, blend.previous, mix, actor.hit || 0);
+      batch.visibility.setX(i, actor.visibility ?? 1);
     }
     this.count++;
   }
@@ -305,10 +334,17 @@ export class Characters {
       for (const batch of model.batches.values()) {
         batch.mesh.count = batch.count;
         if (!batch.count) continue;
-        batch.mesh.instanceMatrix.needsUpdate = true;
-        if (batch.mesh.instanceColor)
-          batch.mesh.instanceColor.needsUpdate = true;
-        batch.pose.needsUpdate = true;
+        for (const [attribute, size] of [
+          [batch.mesh.instanceMatrix, 16],
+          [batch.mesh.instanceColor, 3],
+          [batch.pose, 4],
+          [batch.visibility, 1],
+        ] as const) {
+          if (!attribute) continue;
+          attribute.clearUpdateRanges();
+          attribute.addUpdateRange(0, batch.count * size);
+          attribute.needsUpdate = true;
+        }
       }
     for (const [id, blend] of this.blends)
       if (this.now - blend.seen > 8) this.blends.delete(id);

@@ -1131,6 +1131,7 @@ body.menu #viewport:after {
   text-shadow: 0 2px 4px #14221c;
   transition: color 0.08s;
 }
+.soldier-impact {position:absolute;z-index:9;transform:translate(-50%,-100%);padding:5px 8px;border:1px solid #f3c978;background:#302616e8;color:#ffe0a2;font:600 13px Barlow,sans-serif;pointer-events:none;white-space:nowrap;box-shadow:0 0 14px #f9c55b40;}
 .hero-feedback.hit {
   color: #ffe5a6;
   font-size: 16px;

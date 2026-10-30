@@ -16,6 +16,7 @@ export interface Player {
   kills: number;
 }
 export interface Squad {
+  slots?: number[];
   id: number;
   owner: number;
   class: number;
@@ -80,6 +81,15 @@ export interface Hero {
   impactZ?: number;
   impactDamage?: number;
   impactKind?: string;
+  hitTargets?: {
+    kind: string;
+    id: number;
+    slot: number;
+    x: number;
+    z: number;
+    damage: number;
+    blocked: boolean;
+  }[];
   blockAt?: number;
   dodgeX?: number;
   dodgeZ?: number;
@@ -94,6 +104,7 @@ export interface BattleEvent {
   owner: number;
 }
 export interface GameState {
+  crowd?: [number, number, number][];
   type: "state";
   room: string;
   phase: "lobby" | "battle" | "finished";

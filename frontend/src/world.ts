@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Characters, outfit } from "./characters";
 import { heroMovement, movementClip } from "./hero-controls";
+import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
   rules,
   clamp,
@@ -12,7 +13,22 @@ import {
   type Squad,
 } from "./types";
 
-type Part = { mesh: THREE.InstancedMesh; count: number };
+type Part = {
+  mesh: THREE.InstancedMesh;
+  count: number;
+  visibility: THREE.InstancedBufferAttribute;
+};
+type BodyView = {
+  x: number;
+  z: number;
+  fromX: number;
+  fromZ: number;
+  toX: number;
+  toZ: number;
+  phase: number;
+  fade: number;
+  seen: number;
+};
 type Placement = {
   x: number;
   y: number;
@@ -122,7 +138,7 @@ export class World {
   private box: HTMLDivElement;
   private nextMouseLock = 0;
   private mouseLockPending = false;
-  private time = 0;
+  private time = performance.now() / 1000;
   private frame = 0;
   private disposed = false;
   private last = performance.now();
@@ -161,6 +177,23 @@ export class World {
   private feedbackKind = "";
   private cameraKick = 0;
   private footstep = 0;
+  private bodies = new Map<number, BodyView>();
+  private bodySpan = 0.1;
+  private soldierHits = new Map<number, number>();
+  private drawVisibility = 1;
+  private heroSight = new THREE.Vector3();
+  private cameraLook = new THREE.Vector3();
+  private cameraGoal = new THREE.Vector3();
+  private cameraDirection = new THREE.Vector3();
+  private struck: {
+    key: number;
+    x: number;
+    z: number;
+    at: number;
+    damage: number;
+    label: string;
+  } | null = null;
+  private targetLabel: HTMLDivElement;
   private swing: THREE.Mesh | null = null;
   private sparks: Array<{
     mesh: THREE.Mesh;
@@ -186,6 +219,9 @@ export class World {
     cue.id = "hero-feedback";
     cue.className = "hero-feedback hidden";
     host.append(cue);
+    this.targetLabel = document.createElement("div");
+    this.targetLabel.className = "soldier-impact hidden";
+    host.append(this.targetLabel);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -323,7 +359,17 @@ export class World {
       mesh.castShadow = !["ring", "bow"].includes(name);
       mesh.receiveShadow = true;
       mesh.count = 0;
-      this.parts[name] = { mesh, count: 0 };
+      const visibility = new THREE.InstancedBufferAttribute(
+        new Float32Array(mesh.instanceMatrix.count).fill(1),
+        1,
+      ).setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute("visibility", visibility);
+      addInstanceFade(mesh.material as THREE.Material);
+      mesh.customDepthMaterial = new THREE.MeshDepthMaterial({
+        depthPacking: THREE.RGBADepthPacking,
+      });
+      addInstanceFade(mesh.customDepthMaterial);
+      this.parts[name] = { mesh, count: 0, visibility };
       this.actors.add(mesh);
     }
   }
@@ -352,6 +398,7 @@ export class World {
     temp.updateMatrix();
     p.mesh.setMatrixAt(i, temp.matrix);
     p.mesh.setColorAt(i, c);
+    p.visibility.setX(i, this.drawVisibility);
   }
   private clearMap() {
     const preservedGeometry = new Set<THREE.BufferGeometry>(),
@@ -735,27 +782,47 @@ export class World {
       this.shots.clear();
       this.heroMotion.clear();
       this.feedbackUntil = 0;
+      this.bodies.clear();
+      this.soldierHits.clear();
+      this.struck = null;
     } else {
       for (const squad of state.squads) {
         const old = previous.squads.find((s) => s.id === squad.id);
         if (!old) continue;
-        if (squad.hp < old.hp) this.hits.set(squad.id, this.time);
+        const exactHit = state.heroes.some(
+          (h) =>
+            (h.impactAt || 0) >
+              (previous.heroes.find((p) => p.owner === h.owner)?.impactAt ||
+                0) &&
+            h.hitTargets?.some(
+              (t) => t.kind === "soldier" && t.id === squad.id,
+            ),
+        );
+        if (squad.hp < old.hp && !exactHit) this.hits.set(squad.id, this.time);
         if (squad.alive < old.alive) {
           const shape =
             rules.factions[old.owner].formations[old.formation].shape;
           const smooth = this.smooth.get(old.id) || old;
-          for (let i = squad.alive; i < old.alive; i++) {
+          const live = new Set(
+            squad.slots ?? Array.from({ length: squad.alive }, (_, i) => i),
+          );
+          for (const i of old.slots ??
+            Array.from({ length: old.alive }, (_, i) => i)) {
+            if (live.has(i)) continue;
             const [ox, oz] = offset(shape, i);
+            const body = this.bodies.get(old.id * 32 + i);
             this.fallen.push({
               id: `fallen-${this.deathID++}`,
               x:
+                body?.x ??
                 smooth.x +
-                ox * Math.cos(smooth.facing) +
-                oz * Math.sin(smooth.facing),
+                  ox * Math.cos(smooth.facing) +
+                  oz * Math.sin(smooth.facing),
               z:
+                body?.z ??
                 smooth.z -
-                ox * Math.sin(smooth.facing) +
-                oz * Math.cos(smooth.facing),
+                  ox * Math.sin(smooth.facing) +
+                  oz * Math.cos(smooth.facing),
               facing: smooth.facing,
               owner: old.owner,
               kind: rules.factions[old.owner].units[old.class].kind,
@@ -767,6 +834,26 @@ export class World {
       }
       for (const hero of state.heroes) {
         const old = previous.heroes.find((h) => h.owner === hero.owner);
+        if ((hero.impactAt || 0) > (old?.impactAt || 0))
+          for (const hit of hero.hitTargets ?? []) {
+            if (hit.kind !== "soldier") continue;
+            const key = hit.id * 32 + hit.slot;
+            this.soldierHits.set(key, this.time);
+            if (hero.owner === owner && this.heroMode) {
+              const squad = state.squads.find((s) => s.id === hit.id);
+              const label = squad
+                ? rules.factions[squad.owner].units[squad.class].short
+                : "Asker";
+              this.struck = {
+                key,
+                x: hit.x,
+                z: hit.z,
+                at: this.time,
+                damage: hit.damage,
+                label,
+              };
+            }
+          }
         if (old && hero.owner === owner && this.heroMode) {
           if (hero.attackAt > 0 && hero.attackAt !== old.attackAt)
             this.combatSound("swing");
@@ -807,8 +894,44 @@ export class World {
       if (this.fallen.length > 96)
         this.fallen.splice(0, this.fallen.length - 96);
     }
+    const now = performance.now() / 1000,
+      alpha = clamp((now - this.snapshotAt) / this.bodySpan, 0, 1);
+    for (const [key, qx, qz] of state.crowd ?? []) {
+      const x = qx / 100,
+        z = qz / 100;
+      let body = this.bodies.get(key);
+      if (!body || Math.hypot(body.toX - x, body.toZ - z) > 30) {
+        body = {
+          x,
+          z,
+          fromX: x,
+          fromZ: z,
+          toX: x,
+          toZ: z,
+          phase: 0,
+          fade: 1,
+          seen: now,
+        };
+        this.bodies.set(key, body);
+      } else {
+        body.fromX = body.fromX + (body.toX - body.fromX) * alpha;
+        body.fromZ = body.fromZ + (body.toZ - body.fromZ) * alpha;
+        body.toX = x;
+        body.toZ = z;
+        body.seen = now;
+      }
+    }
+    for (const [key, body] of this.bodies)
+      if (now - body.seen > 8) this.bodies.delete(key);
+    for (const [key, at] of this.soldierHits)
+      if (now - at > 2) this.soldierHits.delete(key);
+    this.bodySpan = clamp(
+      state.time - (previous?.time ?? state.time - 0.1),
+      0.05,
+      0.2,
+    );
     this.state = state;
-    this.snapshotAt = this.time;
+    this.snapshotAt = now;
     this.owner = owner;
     this.preview = state.phase === "lobby";
     if (state.map !== this.mapID) this.buildMap(state.map);
@@ -1170,7 +1293,18 @@ export class World {
     const state = this.state;
     if (!state) return;
     for (const p of Object.values(this.parts)) p.count = 0;
-    this.characters.begin(this.time, this.camera.position);
+    this.drawVisibility = 1;
+    this.characters.begin(this.time, this.camera.position, this.heroMode);
+    const activeHero = state.heroes.find((h) => h.owner === this.owner);
+    if (activeHero) {
+      const p = this.smooth.get(10000 + this.owner) ?? activeHero;
+      this.heroSight.set(
+        p.x,
+        heightAt(this.mapID, p.x, p.z) + 1.5 + activeHero.y,
+        p.z,
+      );
+    }
+    const alpha = clamp((this.time - this.snapshotAt) / this.bodySpan, 0, 1);
     const serverTime =
       state.time +
       (this.preview ? 0 : Math.min(0.15, this.time - this.snapshotAt));
@@ -1193,38 +1327,76 @@ export class World {
       const f = rules.factions[s.owner],
         spec = f.units[s.class],
         shape = f.formations[s.formation].shape;
-      for (let i = 0; i < s.alive; i++) {
+      const gear = outfit(s.owner, spec.kind),
+        mounted = isMounted(spec.kind);
+      for (let rank = 0; rank < s.alive; rank++) {
+        const i = s.slots?.[rank] ?? rank,
+          key = s.id * 32 + i;
         const [ox, oz] = offset(shape, i);
-        const x = v.x + ox * Math.cos(v.facing) + oz * Math.sin(v.facing),
+        let x = v.x + ox * Math.cos(v.facing) + oz * Math.sin(v.facing),
           z = v.z - ox * Math.sin(v.facing) + oz * Math.cos(v.facing);
+        const body = this.bodies.get(key);
+        let actorMoving = moving;
+        if (body) {
+          x = body.fromX + (body.toX - body.fromX) * alpha;
+          z = body.fromZ + (body.toZ - body.fromZ) * alpha;
+          const travel = Math.hypot(x - body.x, z - body.z);
+          actorMoving = travel / Math.max(dt, 0.001) > 0.25;
+          body.phase += travel * 0.18;
+          body.x = x;
+          body.z = z;
+        }
+        const fade =
+          this.heroMode && activeHero
+            ? crowdVisibility(
+                x,
+                heightAt(this.mapID, x, z) + (mounted ? 1.9 : 1.25),
+                z,
+                mounted ? 1.25 : 0.65,
+                this.camera.position,
+                this.heroSight,
+              )
+            : 1;
+        if (body) {
+          body.fade += (fade - body.fade) * (1 - Math.exp(-dt * 20));
+          this.drawVisibility = body.fade;
+        } else this.drawVisibility = fade;
         if (this.characters.ready) {
-          const gear = outfit(s.owner, spec.kind);
-          const mounted = isMounted(spec.kind);
           const attackAge = serverTime - s.attackAt - (i % 5) * 0.045;
-          const hitAge =
-            this.time - (this.hits.get(s.id) ?? -10) - (i % 4) * 0.03;
+          const exactHitAge = this.time - (this.soldierHits.get(key) ?? -100);
+          const hitAge = Math.min(
+            exactHitAge,
+            this.time - (this.hits.get(s.id) ?? -100) - (i % 4) * 0.03,
+          );
           const attacking =
             s.attackAt > 0 && attackAge >= 0 && attackAge < 0.82;
-          const motion = attacking
-            ? mounted
-              ? "ride_" + gear.attack
-              : gear.attack
-            : hitAge >= 0 && hitAge < 0.22 && i % 3 === 0
+          const motion =
+            exactHitAge < 0.28 && !mounted
               ? "hit"
-              : mounted
-                ? "ride"
-                : moving
-                  ? "run"
-                  : s.engaged && ["spear", "sword"].includes(spec.kind)
-                    ? "block"
-                    : "idle";
-          const phase = attacking
-            ? (attackAge / 0.82) * this.characters.duration(gear.model, motion)
-            : motion === "hit"
+              : attacking
+                ? mounted
+                  ? "ride_" + gear.attack
+                  : gear.attack
+                : hitAge >= 0 && hitAge < 0.22 && i % 3 === 0
+                  ? "hit"
+                  : mounted
+                    ? "ride"
+                    : actorMoving
+                      ? "run"
+                      : s.engaged && ["spear", "sword"].includes(spec.kind)
+                        ? "block"
+                        : "idle";
+          const phase =
+            motion === "hit"
               ? hitAge * 2.5
-              : this.time * (moving ? 0.95 : 1) + i * 0.173;
+              : attacking
+                ? (attackAge / 0.82) *
+                  this.characters.duration(gear.model, motion)
+                : actorMoving && body
+                  ? body.phase + i * 0.173
+                  : this.time + i * 0.173;
           const lunge =
-            attacking && !isRanged(spec.kind) && !mounted
+            !body && attacking && !isRanged(spec.kind) && !mounted
               ? Math.sin((attackAge / 0.82) * Math.PI) * 0.28
               : 0;
           const ground = heightAt(this.mapID, x, z);
@@ -1235,7 +1407,7 @@ export class World {
               v.facing,
               s.owner,
               spec.kind === "camel",
-              moving,
+              actorMoving,
               i,
             );
           this.characters.draw({
@@ -1245,7 +1417,7 @@ export class World {
             y:
               ground +
               (mounted
-                ? 1.1 + (moving ? Math.sin(this.time * 12 + i) * 0.07 : 0)
+                ? 1.1 + (actorMoving ? Math.sin(this.time * 12 + i) * 0.07 : 0)
                 : 0),
             z: z + Math.cos(v.facing) * lunge,
             facing: v.facing,
@@ -1254,6 +1426,7 @@ export class World {
             phase,
             loop: !attacking && motion !== "hit",
             hit: hitAge >= 0 && hitAge < 0.16 ? 1 - hitAge / 0.16 : 0,
+            visibility: this.drawVisibility,
           });
         } else
           this.soldier(
@@ -1263,7 +1436,7 @@ export class World {
             s.owner,
             spec.kind,
             i,
-            moving,
+            actorMoving,
             state.time - s.attackAt < 0.25,
           );
         if (this.selected.has(s.id))
@@ -1282,6 +1455,7 @@ export class World {
           );
       }
     }
+    this.drawVisibility = 1;
     for (const h of state.heroes) {
       if (h.hp <= 0) continue;
       const id = 10000 + h.owner;
@@ -1381,6 +1555,7 @@ export class World {
           facing: v.facing,
           color: factionColors[h.owner],
           size: 1.16,
+          focus: local,
           motion,
           phase,
           loop:
@@ -1467,8 +1642,17 @@ export class World {
     this.characters.end();
     for (const p of Object.values(this.parts)) {
       p.mesh.count = p.count;
-      p.mesh.instanceMatrix.needsUpdate = true;
-      if (p.mesh.instanceColor) p.mesh.instanceColor.needsUpdate = true;
+      if (!p.count) continue;
+      for (const [attribute, size] of [
+        [p.mesh.instanceMatrix, 16],
+        [p.mesh.instanceColor, 3],
+        [p.visibility, 1],
+      ] as const) {
+        if (!attribute) continue;
+        attribute.clearUpdateRanges();
+        attribute.addUpdateRange(0, p.count * size);
+        attribute.needsUpdate = true;
+      }
     }
   }
   private drawLabels() {
@@ -1550,35 +1734,48 @@ export class World {
         const p = this.smooth.get(10000 + h.owner) ?? h;
         const yaw = this.heroYaw;
         const dist = 8.2;
-        const look = new THREE.Vector3(
+        const look = this.cameraLook.set(
           p.x,
           heightAt(this.mapID, p.x, p.z) + 1.9 + h.y,
           p.z,
         );
-        const goal = new THREE.Vector3(
+        const goal = this.cameraGoal.set(
           p.x - Math.sin(yaw) * dist - Math.cos(yaw) * 1.15,
           look.y + 2.2 + this.heroPitch * 6,
           p.z - Math.cos(yaw) * dist + Math.sin(yaw) * 1.15,
         );
-        const direction = goal.clone().sub(look).normalize();
+        const direction = this.cameraDirection.copy(goal).sub(look).normalize();
         let boom = look.distanceTo(goal);
-        const blockers = [
-          ...this.state.bases.map((b) => ({ x: b.x, z: b.z, r: 11 })),
-          ...rules.maps[this.mapID].obstacles,
-        ];
-        for (const b of blockers) {
-          const sphere = new THREE.Sphere(new THREE.Vector3(b.x, 4, b.z), b.r);
-          const hit = new THREE.Ray(look, direction).intersectSphere(
-            sphere,
-            new THREE.Vector3(),
-          );
-          if (hit)
-            boom = Math.min(boom, Math.max(1.6, look.distanceTo(hit) - 0.6));
-        }
+        const obstruct = (x: number, z: number, r: number) => {
+          const mx = look.x - x,
+            my = look.y - 4,
+            mz = look.z - z,
+            c = mx * mx + my * my + mz * mz - r * r;
+          if (c <= 0) return; // the conservative proxy must not collapse the boom when its origin is inside
+          const b = mx * direction.x + my * direction.y + mz * direction.z,
+            d = b * b - c;
+          if (d < 0) return;
+          const entry = -b - Math.sqrt(d);
+          if (entry > 0) boom = Math.min(boom, Math.max(2.2, entry - 0.6));
+        };
+        for (const b of this.state.bases) obstruct(b.x, b.z, 10);
+        for (const b of rules.maps[this.mapID].obstacles)
+          obstruct(b.x, b.z, b.r);
         goal.copy(look).addScaledVector(direction, boom);
         goal.y = Math.max(goal.y, heightAt(this.mapID, goal.x, goal.z) + 1.5);
         this.camera.position.lerp(goal, 1 - Math.exp(-dt * 12));
+        if (this.camera.position.distanceTo(look) > boom) {
+          this.cameraDirection.copy(this.camera.position).sub(look).normalize();
+          this.camera.position
+            .copy(look)
+            .addScaledVector(this.cameraDirection, boom);
+        }
         this.camera.position.y += Math.sin(this.time * 85) * this.cameraKick;
+        this.camera.position.y = Math.max(
+          this.camera.position.y,
+          heightAt(this.mapID, this.camera.position.x, this.camera.position.z) +
+            1.2,
+        );
         this.camera.lookAt(
           look.x + Math.sin(yaw) * 6,
           look.y - 0.45 - this.heroPitch * 3,
@@ -1623,12 +1820,35 @@ export class World {
     const elapsed = (now - this.last) / 1000;
     const dt = Math.min(0.05, elapsed);
     this.last = now;
-    this.time += dt;
+    this.time = now / 1000;
     this.cameraKick *= Math.exp(-dt * 22);
     this.frame++;
     this.fps = this.fps * 0.97 + (1 / Math.max(elapsed, 0.001)) * 0.03;
     this.updateCamera(dt);
+    this.camera.updateMatrixWorld();
     this.drawArmy(dt);
+    if (this.struck && this.heroMode && this.time - this.struck.at < 0.8) {
+      const hit = this.struck,
+        body = this.bodies.get(hit.key);
+      const p = tempV
+        .set(
+          body?.x ?? hit.x,
+          heightAt(this.mapID, hit.x, hit.z) + 3.1,
+          body?.z ?? hit.z,
+        )
+        .project(this.camera);
+      this.targetLabel.classList.toggle(
+        "hidden",
+        p.z < 0 || p.z > 1 || Math.abs(p.x) > 1 || Math.abs(p.y) > 1,
+      );
+      this.targetLabel.style.left =
+        (p.x * 0.5 + 0.5) * this.canvas.clientWidth + "px";
+      this.targetLabel.style.top =
+        (-p.y * 0.5 + 0.5) * this.canvas.clientHeight + "px";
+      this.targetLabel.textContent = `${hit.label} −${Math.round(hit.damage)}`;
+      this.canvas.dataset.hitSoldier = String(hit.key);
+    } else this.targetLabel.classList.add("hidden");
+    this.canvas.dataset.triangles = String(this.renderer.info.render.triangles);
     if (
       !this.heroMode ||
       !this.state?.heroes.some((h) => h.owner === this.owner && h.hp > 0)
