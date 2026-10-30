@@ -2,6 +2,8 @@
 
 Ekonomisiz, dört oyunculu, 3D RTS / üçüncü şahıs savaş oyununun ilk oynanabilir sürümü. Frontend **TypeScript + Three.js**, sunucu **Go + WebSocket**. Harici oyun servisi veya veritabanı gerektirmez.
 
+**Canlı oyna: [ironfront-ebon.vercel.app](https://ironfront-ebon.vercel.app)**. Oda oluştur, altı haneli kodu paylaş; arkadaşların farklı faction seçerek katılsın. En fazla dört oyuncu. Ücretsiz Render servisi boşta uyuyabildiğinden uzun aradan sonraki ilk bağlantı yaklaşık bir dakika sürebilir. [Dağıtım ve canlı test kaydı](docs/DEPLOYMENT.md).
+
 ## Hemen oyna — Windows
 
 Güncel hazır pakette `start-performance.cmd` dosyasına çift tıkla. Oyun `http://localhost:8792` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır. Önceki savaş paketi `start-combat.cmd` ile 8790, ilk paket `start-game.cmd` ile 8787 portundadır.
@@ -171,9 +173,9 @@ Karakter kontrolü klip sürelerini, sonlu poz matrislerini, kemik ağırlıklar
 
 Kamera takibi ve orta fare tuşu değişikliğinin ölçümü: [CAMERA_CONTROLS.md](docs/CAMERA_CONTROLS.md).
 
-## Vercel'e hazırlık
+## Canlı dağıtım
 
-Henüz internete yayınlanmadı. `vercel.json` frontend için hazırdır. Kalıcı Go oyun süreci ayrı bir container/VPS servisinde çalışır; frontend `VITE_SERVER_URL=https://oyun-sunucusu.example` üzerinden bağlanır. Ayrıntılar: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+30 Ekim 2026'da frontend Vercel'e, tek Go süreci Render Frankfurt'a yayımlandı. [Oyun](https://ironfront-ebon.vercel.app) · [Sunucu sağlık kontrolü](https://ironfront-game.onrender.com/health). İnternet üzerinden dört WebSocket istemcisi, hero teması ve tarayıcıda oda/hero akışı doğrulandı; dört ayrı fiziksel cihaz testi henüz yapılmadı. Otomatik deploy kapalıdır; güncellemeler maçlar arasında elle yayımlanır. Ayrıntılar: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Lisanslar
 

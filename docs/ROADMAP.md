@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+30 Ekim 2026'da [Vercel frontend](https://ironfront-ebon.vercel.app) ve Render Frankfurt Go servisi yayımlandı. Dört WSS istemcisi, tarayıcıdan faction reddi/tekrar katılım, 400 asker, hero hareketi/isabeti ve origin denetimi canlıda doğrulandı. Katılım reddinde proxy close gecikmesinin arayüzü bekletmesi düzeltildi. [Dağıtım kimlikleri ve test kaydı](DEPLOYMENT.md). Dört farklı cihazla gerçek oyuncu testi hâlâ kullanıcı denemesini bekliyor.
+
 Birlik teması gerçek asker gövdelerinden hesaplanır: yalnız menzil/açı/engel denetimini geçen askerler saldırır, yakındaki askerler merkezleri uzakta olsa da çatışabilir. Vurulan slot hasar tepkisini ve ölümü taşır. Hero blok/kaçınma, üs yüzeyi, engeller ve allocation üretmeyen temas sorgusu testleri; tüm Go testleri/vet, üretim derlemesi, dört WebSocket istemcisi ve tarayıcıda ön/arka sıra ayrımı geçti.
 
 Saldırı hazırlık/temas zamanlaması tamamlandı. Yakın dövüş hasarı hazırlık sonrası yeniden doğrulanan temasta; birlik ve Akıncı hero atışları mesafeye bağlı uçuş sonunda çözülür. Kaçan hedef, engel, hazırlık sırasında ölüm/geri çekilme ve varış anındaki dodge test edildi. Klipler bitmeden yeniden başlatılmaz; 20 Hz isabetler 10 Hz görüntü paketinde biriktirilir. Oklar tek instanced çizimde, yaylım başına en fazla üç temsili okla gösterilir; gerçek hasar her katılımcı asker için ayrı hesaplanır. Izgara yalnız dolu hücreleri temizler ve temas sorgusu dost hücreleri atlar.
@@ -50,7 +52,7 @@ Hero kontrol geçişi tamamlandı: kamera yönüne göre A/D düzeltmesi, ok tu�
 | 3 | Ayrı cihazda uzun performans testi | Sabit 400/800 asker karşılaştırması tamamlandı; yalnız oyun açıkken uzun gerçek maçta kare süreleri ve ağ trafiği ölçülür | `perf(render)` veya `perf(server)`; ölçümle bulunan darboğaza göre |
 | 4 | Denge denemeleri | Faction/harita/dizilim eşleşmeleri ve önden/yan/arka saldırılar tekrarlanır; katsayı değişikliği kanıtıyla açıklanır | `balance(rules)` ve ilgili kural testleri |
 | 5 | Görsellerin sonraki geçişi | Faction başına ayrı model/siluetler, daha doğal binekler ve yakın savaş temasları; mevcut hareketlerin kullanıcı testiyle değerlendirilmesi | `assets(characters)` veya `feat(client)` |
-| 6 | İnternete dağıtım | Kalıcı Go servisi HTTPS/WSS ile açılır; Vercel frontend bağlanır; dört ayrı cihazın aynı maçı oynadığı doğrulanır | `deploy` ayarları ve doğrulama kaydı |
+| 6 | Canlı maç geri bildirimi | Vercel + Render yayını tamamlandı; dört farklı cihazda tam maç, kopma ve performans gözlemleri kaydedilir | Bulunan sorunlara ayrı düzeltmeler |
 
 Bunlar henüz tamamlanmış özellikler değildir. Her parça ayrı uygulanır, doğrulanır ve commit edilir; sırf planı göstermek için boş commit atılmaz.
 
@@ -60,5 +62,5 @@ Bunlar henüz tamamlanmış özellikler değildir. Her parça ayrı uygulanır, 
 - İnternet gecikmesinde tahmin/rollback, kalıcı oturum, matchmaking, hesap ve maç geçmişi yoktur.
 - PostgreSQL ancak hesap/geçmiş gibi kalıcılık ihtiyacı doğarsa değerlendirilir. Mevcut oyun için gerekmez.
 - Kaynak/altın/tarım ve ekonomik ilerleme eklemek kapsam dışıdır.
-- Docker ve Vercel dosyalarının bulunması canlı dağıtımın yapıldığı anlamına gelmez.
+- Canlı servis ücretsiz Render planındadır; boşta uyuyabilir, restart/deploy RAM'deki maçları siler. Kalıcı maç kaydı yoktur.
 - Ayrıntılı kanıt ve sınırlar: [VALIDATION.md](VALIDATION.md). Çalıştırma: [README](../README.md). Commit düzeni: [CONTRIBUTING](../CONTRIBUTING.md).

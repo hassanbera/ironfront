@@ -9,5 +9,8 @@ services:
     dockerContext: .
     numInstances: 1
     healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: ironfront-ebon.vercel.app
     # Room state lives in this process; only deploy tested changes between matches.
     autoDeployTrigger: "off"

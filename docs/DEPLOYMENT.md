@@ -1,6 +1,32 @@
 # Dağıtım
 
-Bu proje bir Vercel frontend'i ve Render'da tek Go oyun sunucusu olarak hazırlanmıştır. 30 Ekim 2026: Docker üretim imajı yerelde dört WebSocket istemcisiyle doğrulandı; Vercel projesi oluşturuldu ve kaynak yükleme kontrolü geçti. Render hesap yetkilendirmesi bekleniyor; henüz doğrulanmış canlı oyun adresi yok. Ücretli plan seçilmedi.
+30 Ekim 2026: Vercel frontend ve Render Frankfurt Go servisi canlıya alındı. Ücretli Render planı seçilmedi; ücretsiz tek instance kullanılıyor.
+
+| Kaynak | Adres / kimlik |
+|---|---|
+| Oyuncu giriş adresi | [ironfront-ebon.vercel.app](https://ironfront-ebon.vercel.app) |
+| Go servisi / alternatif giriş | [ironfront-game.onrender.com](https://ironfront-game.onrender.com) |
+| Sağlık kontrolü | [/health](https://ironfront-game.onrender.com/health) |
+| Canlı kaynak commit'i | `28bb6788a094bbcb523fc1c76231fa14a24de5b4` |
+| Render servisi | `srv-dbiebcon74is739dncq0` |
+| Render canlı deploy | `dep-dbiee8mc6qcc73a9bu9g` |
+| Vercel canlı deploy | `dpl_52NPSDkCG6CMKNq9zSzGnNw629rj` |
+
+Vercel üretim ortamında `VITE_SERVER_URL=https://ironfront-game.onrender.com`; Render'da `ALLOWED_ORIGINS=ironfront-ebon.vercel.app`. Vercel oturumu gerekmiyor. Private GitHub kaynak deposu private kaldı. Vercel'in benzersiz deploy/preview URL'leri origin listesinde yoktur; oyun için yukarıdaki sabit üretim adresini kullan.
+
+## Geçen canlı kontroller
+
+- Ana oyun, `drill.html`, `crowd-lab.html`: HTTPS 200 ve doğru ayrı sayfa başlıkları. Assetler yüklendi; tarayıcı konsolunda hata/uyarı yok.
+- Render `/health`: `ok:true`, `tickRate:20`; son deploy durumu `live`, Vercel durumu `READY`.
+- `network-test.mjs`: internet üzerinden dört gerçek WSS bağlantısı, 400 asker / 16 birlik, beşinci oyuncu reddi, host yetkisi, emir sahipliği, asker hareketi, dizilim, hero senkronizasyonu, doğru token ile dönüş ve yanlış token reddi.
+- `combat-network-test.mjs`: iki hero, hazırlık/uçuş sırasında hasar olmaması, doğru hedefe varış isabeti ve varışta dodge. Ölçülen ok uçuşu 0,545 saniye.
+- Vercel origin'inden `join-rejection-browser.js`: üç test WebSocket'i + gerçek oyun arayüzüyle dördüncü bağlantı; dolu faction reddinden sonra başka faction ile hemen katılım; dört bağlı oyuncu, 400 asker, hero'ya geçiş ve W tuşuyla hareketin diğer istemciye ulaşması.
+- `hud-browser.js`: canlı bağlantıda hero/RTS dönüşü, birlik seçimi, dizilim, yeni maç ve değişmeyen panellerde sıfır gereksiz DOM yenilemesi.
+- İzin verilmeyen `https://untrusted.invalid` Origin'i ile WebSocket Upgrade isteği HTTP 403 aldı. Vercel origin'iyle gerçek bağlantılar kabul edildi.
+
+İlk canlı test, beşinci oyuncunun açık ret yanıtı gelmesine rağmen proxy üzerinden close olayı geciktiği için zaman aşımına uğradı. `28bb678` ile ilk katılım hatasında istemci hemen bağlantıyı bırakıp bekleyen arayüzü açar; ağ testi de reddi uygulamanın hata yanıtından değerlendirir. Son canlı sürümde ret/tekrar katılım ve hero hareketi kontrolü de geçti. Sunucunun savaş kuralları değişmedi.
+
+Bunlar aynı test makinesinden açılan bağımsız bağlantılardır; dört farklı fiziksel cihaz veya uzun süreli gerçek oyuncu maçı doğrulaması değildir. FPS karşılaştırmasının koşulları ve sınırları [RENDER_VALIDATION.md](RENDER_VALIDATION.md) içindedir.
 
 ## Render kurulumu
 
@@ -38,7 +64,9 @@ Origin listesini tüm internete açmak gerekmez. Aynı host üzerinden sunulan a
 5. Oluşan Vercel hostunu Go servisinin `ALLOWED_ORIGINS` değerine ekle ve Go servisini yeniden başlat. Restart aktif maçları bitirir.
 6. Dört tarayıcı oturumunda aynı oda koduyla gir, birliğe komut ver ve tüm istemcilerde hareketi kontrol et.
 
-Mevcut Vercel proje adı `ironfront`, scope `hassanberas-projects`. GitHub otomatik bağlantısı kurulamadı; bu, doğrulanan kaynak kodunun Vercel CLI ile yüklenmesine engel değildir. Proje sayfası: [Vercel IRONFRONT](https://vercel.com/hassanberas-projects/ironfront). GitHub'a push ile otomatik Vercel deploy yapıldığı varsayılmamalı.
+Mevcut Vercel proje adı `ironfront`, scope `hassanberas-projects`. GitHub otomatik bağlantısı kurulmadı; kaynak kod Vercel CLI ile yüklendi. Proje sayfası: [Vercel IRONFRONT](https://vercel.com/hassanberas-projects/ironfront). GitHub'a push otomatik Vercel deploy yapmaz. Render GitHub erişimi bağlandı, ancak `autoDeployTrigger: off` nedeniyle o da elle dağıtılır.
+
+Sonraki yayında önce ilgili testleri çalıştır ve kaynak commit'ini push et. Render CLI ile `render deploys create srv-dbiebcon74is739dncq0 --commit <SHA> --wait --confirm`, Vercel proje kökünde `vercel deploy --prod --yes` kullan. Render yeniden başladığında aktif odalar sona erer; bunu maçlar arasında yap. Yalnız belge commit'i için oyun servislerini yeniden başlatmak gerekmez.
 
 Yayın kontrolü: üretim adresinde oturum açmadan ana ekran, `drill.html` ve assetler açılmalı; tarayıcıdan `wss://<render-host>/ws` bağlantısı izinli Vercel origin'i ile kurulmalı. Ardından `TEST_WS_URL=wss://<render-host>/ws node scripts/network-test.mjs` ve `combat-network-test.mjs` çalıştır. Bu otomatik testler dört ayrı cihazın yerini tutmaz.
 
