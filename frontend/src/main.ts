@@ -14,6 +14,12 @@ import { icon, unitIcon, formationDiagram } from "./icons";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
+const hudHTML = new Map<string, string>();
+function setHUD(id: string, html: string) {
+  if (hudHTML.get(id) === html) return;
+  $(id).innerHTML = html;
+  hudHTML.set(id, html);
+}
 let chosenFaction = 0,
   chosenHero = 0,
   chosenMap = 0,
@@ -278,6 +284,7 @@ net.onState = (state) => {
   if (state.phase === "finished" && modalType !== "result") showResult();
 };
 function leaveGame() {
+  hudHTML.clear();
   net.send({ type: "leave" });
   net.disconnect();
   if (world.heroMode) world.exitHero();
@@ -439,35 +446,41 @@ function renderHUD() {
       (b) => b.owner === net.owner && b.stage === "active",
     ).length;
   const roster = mine.length * 25;
-  $("top-stats").innerHTML =
-    `<div class="stat">${icon("users", 17)}<div><strong>${alive} <span style="color:#7d9673;font-size:11px">/ ${p.capacity}</span></strong><small>ASKER / KAPASİTE</small></div></div><div class="stat">${icon("flag", 17)}<div><strong>${outposts}<span style="color:#7d9673;font-size:11px"> / 4</span></strong><small>OUTPOST</small></div></div><div class="stat">${icon("castle", 17)}<div><strong>${bases}</strong><small>FAAL ÜS</small></div></div><div class="stat timer">${icon("clock", 17)}<div><strong>${timeText(1200 - game.time)}</strong><small>KALAN SÜRE</small></div></div>`;
+  setHUD(
+    "top-stats",
+    `<div class="stat">${icon("users", 17)}<div><strong>${alive} <span style="color:#7d9673;font-size:11px">/ ${p.capacity}</span></strong><small>ASKER / KAPASİTE</small></div></div><div class="stat">${icon("flag", 17)}<div><strong>${outposts}<span style="color:#7d9673;font-size:11px"> / 4</span></strong><small>OUTPOST</small></div></div><div class="stat">${icon("castle", 17)}<div><strong>${bases}</strong><small>FAAL ÜS</small></div></div><div class="stat timer">${icon("clock", 17)}<div><strong>${timeText(1200 - game.time)}</strong><small>KALAN SÜRE</small></div></div>`,
+  );
   $("room-code").textContent = game.room;
-  $("net-status").innerHTML = `<i class="status-dot"></i>${net.latency} ms`;
+  setHUD("net-status", `<i class="status-dot"></i>${net.latency} ms`);
   $("army-roster").textContent = `${mine.length} BİRLİK`;
-  $("army-list").innerHTML = mine
-    .map((s, i) => {
-      const u = rules.factions[net.owner].units[s.class];
-      const status =
-        s.alive === 0
-          ? bases === 0
-            ? "Üs gerekli"
-            : roster > p.capacity
-              ? "Kapasite bekliyor"
-              : `${Math.max(0, Math.ceil(s.respawn - game!.time))} sn · takviye`
-          : s.notice > game!.time
-            ? "Yan saldırı · tepki gecikmesi"
-            : s.engaged
-              ? "Çatışmada"
-              : s.order === "retreat"
-                ? "Ana üsse dönüyor"
-                : s.order === "move" || s.order === "attackmove"
-                  ? "İlerliyor"
-                  : s.alive < 25
-                    ? "Üs yakınında takviye al"
-                    : "Hazır";
-      return `<button class="army-row ${selected.has(s.id) ? "selected" : ""} ${s.alive === 0 ? "dead" : ""}" data-squad="${s.id}" aria-pressed="${selected.has(s.id)}"><span class="unit-mini-icon">${icon(unitIcon(u.kind), 22)}</span><span class="army-info"><strong>${u.short}</strong><small>${status}</small><span class="row-hp"><i style="width:${(s.hp / (u.hp * 25)) * 100}%"></i></span></span><span class="army-count">${s.alive}<small style="font-size:7px;color:#859b79">${i < 9 ? "[" + (i + 1) + "]" : ""}</small></span></button>`;
-    })
-    .join("");
+  if (!world.heroMode)
+    setHUD(
+      "army-list",
+      mine
+        .map((s, i) => {
+          const u = rules.factions[net.owner].units[s.class];
+          const status =
+            s.alive === 0
+              ? bases === 0
+                ? "Üs gerekli"
+                : roster > p.capacity
+                  ? "Kapasite bekliyor"
+                  : `${Math.max(0, Math.ceil(s.respawn - game!.time))} sn · takviye`
+              : s.notice > game!.time
+                ? "Yan saldırı · tepki gecikmesi"
+                : s.engaged
+                  ? "Çatışmada"
+                  : s.order === "retreat"
+                    ? "Ana üsse dönüyor"
+                    : s.order === "move" || s.order === "attackmove"
+                      ? "İlerliyor"
+                      : s.alive < 25
+                        ? "Üs yakınında takviye al"
+                        : "Hazır";
+          return `<button class="army-row ${selected.has(s.id) ? "selected" : ""} ${s.alive === 0 ? "dead" : ""}" data-squad="${s.id}" aria-pressed="${selected.has(s.id)}"><span class="unit-mini-icon">${icon(unitIcon(u.kind), 22)}</span><span class="army-info"><strong>${u.short}</strong><small>${status}</small><span class="row-hp"><i style="width:${(s.hp / (u.hp * 25)) * 100}%"></i></span></span><span class="army-count">${s.alive}<small style="font-size:7px;color:#859b79">${i < 9 ? "[" + (i + 1) + "]" : ""}</small></span></button>`;
+        })
+        .join(""),
+    );
   $("capacity-hint").textContent = `${roster}/${p.capacity} tahsisli`;
   document
     .querySelectorAll<HTMLButtonElement>("[data-recruit]")
@@ -484,14 +497,17 @@ function renderHUD() {
         forms.length > 0 && forms.every((f) => f === +b.dataset.formation!),
       ),
     );
-  $("event-feed").innerHTML = game.events
-    .filter((e) => game!.time - e.time < 14)
-    .slice(-3)
-    .map(
-      (e) =>
-        `<div class="event-item"><small>${timeText(e.time)}</small>${esc(e.text)}</div>`,
-    )
-    .join("");
+  setHUD(
+    "event-feed",
+    game.events
+      .filter((e) => game!.time - e.time < 14)
+      .slice(-3)
+      .map(
+        (e) =>
+          `<div class="event-item"><small>${timeText(e.time)}</small>${esc(e.text)}</div>`,
+      )
+      .join(""),
+  );
   if (
     game.events.some(
       (e) => e.id > lastEvent && e.kind === "capture" && e.owner === net.owner,
@@ -509,21 +525,27 @@ function renderHUD() {
     marsh: ["Bataklık", "Ağır birlikler daha fazla yavaşlar"],
     pass: ["Dar geçit", "Geniş dizilimlere −%20 hız"],
   };
-  $("terrain-info").innerHTML = `<b>${text[terrain][0]}</b>${text[terrain][1]}`;
+  setHUD("terrain-info", `<b>${text[terrain][0]}</b>${text[terrain][1]}`);
   const h = game.heroes.find((h) => h.owner === net.owner);
   if (h) {
     $<HTMLButtonElement>("hero-toggle").disabled = h.hp <= 0;
-    $("hero-toggle").innerHTML =
-      `${icon("swords", 17)} ${h.hp <= 0 ? `KAHRAMAN · ${Math.max(0, Math.ceil(h.respawn - game.time))} sn` : "KAHRAMANA GEÇ"} <kbd class="key">TAB</kbd>`;
+    setHUD(
+      "hero-toggle",
+      `${icon("swords", 17)} ${h.hp <= 0 ? `KAHRAMAN · ${Math.max(0, Math.ceil(h.respawn - game.time))} sn` : "KAHRAMANA GEÇ"} <kbd class="key">TAB</kbd>`,
+    );
     if (world.heroMode) {
-      $("hero-hud").innerHTML =
-        `<div class="hero-hud-title"><span>${rules.heroes[h.class].name} · ${rules.factions[net.owner].name}</span><span>${Math.ceil(h.hp)} <small style="font-size:10px;color:#80966e">/ ${rules.heroes[h.class].hp}</small></span></div><div class="hero-bars"><div class="hero-bar"><i style="width:${(h.hp / rules.heroes[h.class].hp) * 100}%"></i></div><div class="hero-bar stamina"><i style="width:${h.stamina}%"></i></div></div><div class="hero-controls"><span><kbd class="key">SOL</kbd> Vur</span><span><kbd class="key">SAĞ</kbd> Blok</span><span><kbd class="key">SHIFT</kbd> Kaçın</span><span><kbd class="key">Q</kbd> ${h.skillReady > game.time ? Math.ceil(h.skillReady - game.time) + " sn" : "Yetenek"}</span></div>${h.hp <= 0 ? `<p style="margin:10px 0 0;font-size:10px">${bases ? Math.max(0, Math.ceil(h.respawn - game.time)) + " sn sonra ana üste doğacaksın." : "Yeniden doğmak için faal üs gerekli."}</p>` : ""}`;
+      setHUD(
+        "hero-hud",
+        `<div class="hero-hud-title"><span>${rules.heroes[h.class].name} · ${rules.factions[net.owner].name}</span><span>${Math.ceil(h.hp)} <small style="font-size:10px;color:#80966e">/ ${rules.heroes[h.class].hp}</small></span></div><div class="hero-bars"><div class="hero-bar"><i style="width:${(h.hp / rules.heroes[h.class].hp) * 100}%"></i></div><div class="hero-bar stamina"><i style="width:${h.stamina}%"></i></div></div><div class="hero-controls"><span><kbd class="key">SOL</kbd> Vur</span><span><kbd class="key">SAĞ</kbd> Blok</span><span><kbd class="key">SHIFT</kbd> Kaçın</span><span><kbd class="key">Q</kbd> ${h.skillReady > game.time ? Math.ceil(h.skillReady - game.time) + " sn" : "Yetenek"}</span></div>${h.hp <= 0 ? `<p style="margin:10px 0 0;font-size:10px">${bases ? Math.max(0, Math.ceil(h.respawn - game.time)) + " sn sonra ana üste doğacaksın." : "Yeniden doğmak için faal üs gerekli."}</p>` : ""}`,
+      );
       $("hero-hint").classList.toggle("hidden", !!modalType);
     }
   }
   drawMinimap();
-  $("header-status").innerHTML =
-    `<i class="status-dot"></i>${Math.round(world.fps)} FPS &nbsp; · &nbsp; ${net.status === "online" ? "BAĞLI" : "BAĞLANTI KOPTU"}`;
+  setHUD(
+    "header-status",
+    `<i class="status-dot"></i>${Math.round(world.fps)} FPS &nbsp; · &nbsp; ${net.status === "online" ? "BAĞLI" : "BAĞLANTI KOPTU"}`,
+  );
 }
 function toggleHero() {
   if (!game || game.phase !== "battle") return;
