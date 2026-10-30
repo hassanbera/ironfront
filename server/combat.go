@@ -4,10 +4,15 @@ import "math"
 
 // One contact per attacking soldier, using the existing lightweight bodies.
 type unitContact struct {
-	from, to *SoldierBody
-	hero     *Hero
-	base     *Base
-	x, z     float64
+	offense                    float64
+	shape                      string
+	from, to                   *SoldierBody
+	shooter                    *Hero
+	skill, flying              bool
+	originX, originZ, interval float64
+	hero                       *Hero
+	base                       *Base
+	x, z                       float64
 }
 
 func weaponReach(kind string) float64 {
@@ -70,7 +75,11 @@ func (g *Game) contactFor(s *Squad, a *SoldierBody, reach, sn, cs float64) unitC
 		lo, hi := crowdCell(a.X-r, a.Z-r), crowdCell(a.X+r, a.Z+r)
 		for z := lo / crowdGridN; z <= hi/crowdGridN; z++ {
 			for x := lo % crowdGridN; x <= hi%crowdGridN; x++ {
-				for i := g.crowdHeads[x+z*crowdGridN]; i >= 0; i = g.bodies[i].Next {
+				cell := x + z*crowdGridN
+				if g.crowdOwners[cell] & ^uint8(1<<s.Owner) == 0 {
+					continue
+				}
+				for i := g.crowdHeads[cell]; i >= 0; i = g.bodies[i].Next {
 					b := g.bodies[i]
 					if b.Ready && b.Squad.Alive > 0 && b.Squad.Owner != s.Owner {
 						consider(unitContact{to: b, x: b.X, z: b.Z}, b.Radius, b.Squad.ID)
@@ -113,76 +122,83 @@ func (g *Game) hasMeleeContact(s *Squad) bool {
 }
 
 func (g *Game) resolveContact(c unitContact, interval float64) {
-	s := c.from.Squad
-	damage := g.spec(s).Damage * interval
+	owner, attacker, x, z := c.source()
+	if c.flying {
+		x, z = c.originX, c.originZ
+	}
+	damage := 0.
+	if c.shooter != nil {
+		damage = rules.Heroes[c.shooter.Class].Damage
+		if c.skill {
+			damage *= 2.2
+		}
+	} else {
+		damage = g.spec(c.from.Squad).Damage * interval
+	}
+	hit := HitTarget{Slot: -1, X: c.x, Z: c.z}
+	if c.shooter == nil && c.to == nil {
+		if c.flying {
+			damage *= c.offense
+		} else {
+			damage *= g.attackOffense(c.from.Squad, x, z)
+		}
+	}
 	if b := c.to; b != nil {
-		if !b.Ready || b.Squad.Alive == 0 {
+		if !b.Ready || b.Squad.Alive == 0 || b.Squad.Owner == owner {
 			return
 		}
-		m, flank := g.attackMultiplierAt(s, b.Squad, c.from.X, c.from.Z, b.X, b.Z)
 		t := b.Squad
-		g.damageSquad(t, damage*m, s.Owner, s.ID, flank)
+		m, flank := g.defenseMultiplierAt(t, x, z, b.X, b.Z)
+		if c.shooter == nil {
+			if c.flying {
+				m, flank = g.attackMultiplierWith(c.from.Squad, t, x, z, b.X, b.Z, c.shape, c.offense)
+			} else {
+				m, flank = g.attackMultiplierAt(c.from.Squad, t, x, z, b.X, b.Z)
+			}
+		}
+		before := t.HP
+		g.damageSquad(t, damage*m, owner, attacker, flank)
 		t.HitSlots |= 1 << b.Slot
 		syncSlots(t, b.Slot)
+		hit.Kind, hit.ID, hit.Slot, hit.X, hit.Z, hit.Damage = "soldier", t.ID, b.Slot, b.X, b.Z, before-t.HP
 	} else if h := c.hero; h != nil {
-		g.damageHero(h, damage, c.from.X, c.from.Z)
-	} else if b := c.base; b != nil && b.Stage == "active" && b.Owner != s.Owner {
-		b.HP = math.Max(0, b.HP-damage*.8)
+		if h.HP <= 0 || h.Owner == owner {
+			return
+		}
+		hit.Blocked = h.Block && h.Stamina >= 5 && math.Abs(angle(math.Atan2(x-h.X, z-h.Z)-h.Facing)) < 1.5
+		before := h.HP
+		g.damageHero(h, damage, x, z)
+		hit.Kind, hit.ID, hit.X, hit.Z, hit.Damage = "hero", h.Owner, h.X, h.Z, before-h.HP
+	} else if b := c.base; b != nil && b.Stage == "active" && b.Owner != owner {
+		before := b.HP
+		scale := .8
+		if c.shooter != nil {
+			scale = .6
+		}
+		b.HP = math.Max(0, b.HP-damage*scale)
+		hit.Kind, hit.ID, hit.Damage = "base", b.ID, before-b.HP
 		if b.HP == 0 {
-			g.event(s.Owner, "base", "Üs yıkıldı. Bölgede kalarak faaliyete geçir.")
+			g.event(owner, "base", "Üs yıkıldı. Bölgede kalarak faaliyete geçir.")
 			b.Stage, b.Owner, b.Progress, b.Captor = "ruined", -1, 0, -1
 		}
 	}
-}
-
-func (g *Game) combat() {
-	g.contacts = g.contacts[:0]
-	for _, s := range g.Squads {
-		if s.Alive == 0 || g.Time < s.AttackTimer {
-			continue
+	if h := c.shooter; h != nil && hit.Damage > 0 {
+		if h.hitEpoch != g.hitEpoch || g.Time-h.ImpactAt > .11 {
+			h.HitTargets = h.HitTargets[:0]
 		}
-		kind := g.spec(s).Kind
-		if (s.Order == "move" || s.Order == "retreat") && kind != "horseArcher" {
-			continue
+		h.hitEpoch = g.hitEpoch
+		if len(h.HitTargets) >= 8 {
+			copy(h.HitTargets, h.HitTargets[1:])
+			h.HitTargets = h.HitTargets[:7]
 		}
-		reach := weaponReach(kind)
-		if ranged(kind) {
-			reach = g.rangeOf(s)
+		h.HitTargets = append(h.HitTargets, hit)
+		first := h.HitTargets[0]
+		kind := "hit"
+		if first.Blocked {
+			kind = "block"
 		}
-		sn, cs := math.Sin(s.Facing), math.Cos(s.Facing)
-		mask := uint32(0)
-		x, z, n := 0., 0., 0.
-		for _, slot := range s.Slots {
-			a := &s.Bodies[slot]
-			if !a.Ready {
-				continue
-			}
-			c := g.contactFor(s, a, reach, sn, cs)
-			if c.from == nil {
-				continue
-			}
-			g.contacts = append(g.contacts, c)
-			mask |= 1 << slot
-			x += c.x
-			z += c.z
-			n++
-		}
-		if mask != 0 {
-			s.AttackSlots = mask
-			s.AttackAt, s.AttackTimer = g.Time, g.Time+.5
-			s.AimX, s.AimZ = x/n, z/n
-		}
+		g.heroImpact(h, first.X, first.Z, first.Damage, kind)
 	}
-	// Choose all sides' contacts before damage to allow simultaneous exchanges.
-	for _, c := range g.contacts {
-		g.resolveContact(c, .5)
-	}
-	for _, s := range g.Squads {
-		if s.AttackAt == g.Time {
-			s.Travel = 0
-		}
-	}
-	g.garrison()
 }
 
 func (g *Game) garrison() {

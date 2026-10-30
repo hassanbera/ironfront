@@ -271,6 +271,8 @@ func (s *Server) run(ctx context.Context) {
 				if ticks%2 == 0 {
 					data, err := json.Marshal(r.game)
 					if err == nil {
+						// Coalesce 20 Hz impacts into the same 10 Hz visual snapshot.
+						r.game.hitEpoch++
 						for _, p := range r.peers {
 							queue(p, data)
 						}

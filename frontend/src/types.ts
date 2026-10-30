@@ -15,6 +15,18 @@ export interface Player {
   mainBase: number;
   kills: number;
 }
+export interface ShotVisual {
+  at: number;
+  land: number;
+  fromX: number;
+  fromZ: number;
+  height: number;
+  x: number;
+  z: number;
+  kind: string;
+  id: number;
+  slot: number;
+}
 export interface Squad {
   slots?: number[];
   id: number;
@@ -37,6 +49,9 @@ export interface Squad {
   attackAt: number;
   attackSlots?: number;
   hitSlots?: number;
+  attackDuration?: number;
+  attackImpact?: number;
+  volley?: ShotVisual[];
   aimX: number;
   aimZ: number;
   flank: string;
@@ -62,6 +77,7 @@ export interface Outpost {
   contested: boolean;
 }
 export interface Hero {
+  volley?: ShotVisual[];
   owner: number;
   class: number;
   x: number;

@@ -71,15 +71,28 @@ func syncSlots(s *Squad, casualty int) {
 }
 
 func crowdCell(x, z float64) int {
-	return int(clamp(math.Floor((x+96)/3), 0, 63)) + int(clamp(math.Floor((z+96)/3), 0, 63))*crowdGridN
+	return max(0, min(63, int((x+96)/3))) + max(0, min(63, int((z+96)/3)))*crowdGridN
 }
 
 func (g *Game) rebuildCrowdGrid() {
-	for i := range g.crowdHeads {
-		g.crowdHeads[i] = -1
+	if !g.crowdInitialized {
+		for i := range g.crowdHeads {
+			g.crowdHeads[i] = -1
+		}
+		g.crowdInitialized = true
 	}
+	// Only occupied cells need clearing between solver passes.
+	for _, cell := range g.crowdCells {
+		g.crowdHeads[cell] = -1
+		g.crowdOwners[cell] = 0
+	}
+	g.crowdCells = g.crowdCells[:0]
 	for i, b := range g.bodies {
 		cell := crowdCell(b.X, b.Z)
+		if g.crowdHeads[cell] < 0 {
+			g.crowdCells = append(g.crowdCells, cell)
+		}
+		g.crowdOwners[cell] |= 1 << b.Squad.Owner
 		b.Next = g.crowdHeads[cell]
 		g.crowdHeads[cell] = i
 	}

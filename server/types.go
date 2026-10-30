@@ -41,6 +41,7 @@ type MapSpec struct {
 	Obstacles                               []Obstacle
 }
 type Rules struct {
+	Combat   struct{ MeleeCycle, MeleeDuration, RangedCycle, RangedDuration, ImpactFraction, ReleaseFraction, ProjectileSpeed float64 }
 	Factions []FactionSpec
 	Heroes   []HeroSpec
 	Maps     []MapSpec
@@ -73,39 +74,48 @@ type Player struct {
 	LastSeen   float64 `json:"-"`
 }
 type Squad struct {
-	ID           int             `json:"id"`
-	Owner        int             `json:"owner"`
-	Class        int             `json:"class"`
-	Formation    int             `json:"formation"`
-	X            float64         `json:"x"`
-	Z            float64         `json:"z"`
-	Facing       float64         `json:"facing"`
-	HP           float64         `json:"hp"`
-	Alive        int             `json:"alive"`
-	TargetX      float64         `json:"targetX"`
-	TargetZ      float64         `json:"targetZ"`
-	Order        string          `json:"order"`
-	Target       int             `json:"target"`
-	Engaged      bool            `json:"engaged"`
-	Notice       float64         `json:"notice"`
-	Respawn      float64         `json:"respawn"`
-	Flash        float64         `json:"flash"`
-	AttackAt     float64         `json:"attackAt"`
-	AttackSlots  uint32          `json:"attackSlots"`
-	HitSlots     uint32          `json:"hitSlots"`
-	AimX         float64         `json:"aimX"`
-	AimZ         float64         `json:"aimZ"`
-	Flank        string          `json:"flank"`
-	Path         []Vec           `json:"-"`
-	Repath       float64         `json:"-"`
-	AttackTimer  float64         `json:"-"`
-	LastAttacker int             `json:"-"`
-	LastHit      float64         `json:"-"`
-	Reform       float64         `json:"-"`
-	Missing      []float64       `json:"-"`
-	Travel       float64         `json:"-"`
-	Slots        []int           `json:"slots"`
-	Bodies       [25]SoldierBody `json:"-"`
+	ID             int          `json:"id"`
+	Owner          int          `json:"owner"`
+	Class          int          `json:"class"`
+	Formation      int          `json:"formation"`
+	X              float64      `json:"x"`
+	Z              float64      `json:"z"`
+	Facing         float64      `json:"facing"`
+	HP             float64      `json:"hp"`
+	Alive          int          `json:"alive"`
+	TargetX        float64      `json:"targetX"`
+	TargetZ        float64      `json:"targetZ"`
+	Order          string       `json:"order"`
+	Target         int          `json:"target"`
+	Engaged        bool         `json:"engaged"`
+	Notice         float64      `json:"notice"`
+	Respawn        float64      `json:"respawn"`
+	Flash          float64      `json:"flash"`
+	AttackAt       float64      `json:"attackAt"`
+	AttackSlots    uint32       `json:"attackSlots"`
+	HitSlots       uint32       `json:"hitSlots"`
+	AttackDuration float64      `json:"attackDuration,omitempty"`
+	AttackImpact   float64      `json:"attackImpact,omitempty"`
+	Volley         []ShotVisual `json:"volley,omitempty"`
+	strikes        [25]unitContact
+	strikeCount    int
+	pendingImpact  float64
+	resolvedAt     float64
+	hitEpoch       uint64
+	moving         bool
+	AimX           float64         `json:"aimX"`
+	AimZ           float64         `json:"aimZ"`
+	Flank          string          `json:"flank"`
+	Path           []Vec           `json:"-"`
+	Repath         float64         `json:"-"`
+	AttackTimer    float64         `json:"-"`
+	LastAttacker   int             `json:"-"`
+	LastHit        float64         `json:"-"`
+	Reform         float64         `json:"-"`
+	Missing        []float64       `json:"-"`
+	Travel         float64         `json:"-"`
+	Slots          []int           `json:"slots"`
+	Bodies         [25]SoldierBody `json:"-"`
 }
 type Base struct {
 	ID        int     `json:"id"`
@@ -128,41 +138,43 @@ type Outpost struct {
 	Contested bool    `json:"contested"`
 }
 type Hero struct {
-	Owner          int         `json:"owner"`
-	Class          int         `json:"class"`
-	X              float64     `json:"x"`
-	Z              float64     `json:"z"`
-	Y              float64     `json:"y"`
-	Facing         float64     `json:"facing"`
-	HP             float64     `json:"hp"`
-	Stamina        float64     `json:"stamina"`
-	Active         bool        `json:"active"`
-	Block          bool        `json:"block"`
-	Respawn        float64     `json:"respawn"`
-	AttackAt       float64     `json:"attackAt"`
-	AttackKind     int         `json:"attackKind"`
-	AttackDuration float64     `json:"attackDuration"`
-	AttackImpact   float64     `json:"attackImpact"`
-	ImpactAt       float64     `json:"impactAt"`
-	ImpactX        float64     `json:"impactX"`
-	ImpactZ        float64     `json:"impactZ"`
-	ImpactDamage   float64     `json:"impactDamage"`
-	ImpactKind     string      `json:"impactKind"`
-	HitTargets     []HitTarget `json:"hitTargets,omitempty"`
-	BlockAt        float64     `json:"blockAt"`
-	DodgeUntil     float64     `json:"dodgeUntil"`
-	DodgeX         float64     `json:"dodgeX"`
-	DodgeZ         float64     `json:"dodgeZ"`
-	SkillReady     float64     `json:"skillReady"`
-	GuardUntil     float64     `json:"guardUntil"`
-	Input          HeroInput   `json:"-"`
-	InputAt        float64     `json:"-"`
-	AttackReady    float64     `json:"-"`
-	DodgeReady     float64     `json:"-"`
-	VY             float64     `json:"-"`
-	PendingStrike  float64     `json:"-"`
-	PendingSkill   bool        `json:"-"`
-	Combo          int         `json:"-"`
+	Owner          int          `json:"owner"`
+	Class          int          `json:"class"`
+	X              float64      `json:"x"`
+	Z              float64      `json:"z"`
+	Y              float64      `json:"y"`
+	Facing         float64      `json:"facing"`
+	HP             float64      `json:"hp"`
+	Stamina        float64      `json:"stamina"`
+	Active         bool         `json:"active"`
+	Block          bool         `json:"block"`
+	Respawn        float64      `json:"respawn"`
+	AttackAt       float64      `json:"attackAt"`
+	AttackKind     int          `json:"attackKind"`
+	AttackDuration float64      `json:"attackDuration"`
+	AttackImpact   float64      `json:"attackImpact"`
+	ImpactAt       float64      `json:"impactAt"`
+	ImpactX        float64      `json:"impactX"`
+	ImpactZ        float64      `json:"impactZ"`
+	ImpactDamage   float64      `json:"impactDamage"`
+	ImpactKind     string       `json:"impactKind"`
+	HitTargets     []HitTarget  `json:"hitTargets,omitempty"`
+	Volley         []ShotVisual `json:"volley,omitempty"`
+	BlockAt        float64      `json:"blockAt"`
+	DodgeUntil     float64      `json:"dodgeUntil"`
+	DodgeX         float64      `json:"dodgeX"`
+	DodgeZ         float64      `json:"dodgeZ"`
+	SkillReady     float64      `json:"skillReady"`
+	GuardUntil     float64      `json:"guardUntil"`
+	Input          HeroInput    `json:"-"`
+	InputAt        float64      `json:"-"`
+	AttackReady    float64      `json:"-"`
+	DodgeReady     float64      `json:"-"`
+	VY             float64      `json:"-"`
+	PendingStrike  float64      `json:"-"`
+	PendingSkill   bool         `json:"-"`
+	hitEpoch       uint64
+	Combo          int `json:"-"`
 }
 type HeroInput struct {
 	X      float64 `json:"x"`
@@ -187,29 +199,34 @@ type Event struct {
 	Owner int     `json:"owner"`
 }
 type Game struct {
-	Type       string     `json:"type"`
-	Room       string     `json:"room"`
-	Phase      string     `json:"phase"`
-	Map        int        `json:"map"`
-	Time       float64    `json:"time"`
-	Host       int        `json:"host"`
-	Players    []*Player  `json:"players"`
-	Squads     []*Squad   `json:"squads"`
-	Bases      []*Base    `json:"bases"`
-	Outposts   []*Outpost `json:"outposts"`
-	Heroes     []*Hero    `json:"heroes"`
-	Events     []Event    `json:"events"`
-	Winner     int        `json:"winner"`
-	Tick       int64      `json:"tick"`
-	nextID     int
-	eventID    int
-	botAt      float64
-	combatAt   float64
-	nav        *Nav
-	Crowd      [][3]int `json:"crowd,omitempty"`
-	bodies     []*SoldierBody
-	crowdHeads [crowdGridN * crowdGridN]int
-	contacts   []unitContact
+	Type             string     `json:"type"`
+	Room             string     `json:"room"`
+	Phase            string     `json:"phase"`
+	Map              int        `json:"map"`
+	Time             float64    `json:"time"`
+	Host             int        `json:"host"`
+	Players          []*Player  `json:"players"`
+	Squads           []*Squad   `json:"squads"`
+	Bases            []*Base    `json:"bases"`
+	Outposts         []*Outpost `json:"outposts"`
+	Heroes           []*Hero    `json:"heroes"`
+	Events           []Event    `json:"events"`
+	Winner           int        `json:"winner"`
+	Tick             int64      `json:"tick"`
+	nextID           int
+	eventID          int
+	botAt            float64
+	combatAt         float64
+	nav              *Nav
+	Crowd            [][3]int `json:"crowd,omitempty"`
+	bodies           []*SoldierBody
+	crowdHeads       [crowdGridN * crowdGridN]int
+	crowdOwners      [crowdGridN * crowdGridN]uint8
+	crowdCells       []int
+	crowdInitialized bool
+	contacts         []unitContact
+	flights          []battleShot
+	hitEpoch         uint64
 }
 type Command struct {
 	Type      string    `json:"type"`

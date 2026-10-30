@@ -201,57 +201,32 @@ func (g *Game) resolveHeroStrike(h *Hero, skill bool) {
 	}
 	// Sort only nearby, in-cone candidates; stable order makes equal scores deterministic.
 	sort.SliceStable(targets, func(i, j int) bool { return targets[i].score < targets[j].score })
-	h.HitTargets = h.HitTargets[:0]
+	if h.Class != 2 {
+		h.HitTargets = h.HitTargets[:0]
+	}
 	usedSquads := map[int]bool{}
+	attempts := 0
+	if h.Class == 2 {
+		h.Volley = h.Volley[:0]
+	}
 	for _, t := range targets {
-		damage := rules.Heroes[h.Class].Damage
-		if skill {
-			damage *= 2.2
-		}
-		contact := HitTarget{Kind: t.kind, ID: t.id, Slot: t.slot, X: t.x, Z: t.z}
+		c := unitContact{shooter: h, skill: skill, x: t.x, z: t.z, hero: t.hero, base: t.base}
 		if s := t.squad; s != nil {
 			if usedSquads[s.ID] {
 				continue
 			}
 			usedSquads[s.ID] = true
-			defense, flank := g.defenseMultiplierAt(s, h.X, h.Z, t.x, t.z)
-			damage *= defense
-			before := s.HP
-			g.damageSquad(s, damage, h.Owner, -100-h.Owner, flank)
-			s.HitSlots |= 1 << t.slot
-			syncSlots(s, t.slot)
-			contact.Damage = before - s.HP
-		} else if target := t.hero; target != nil {
-			contact.Blocked = target.Block && target.Stamina >= 5 && math.Abs(angle(math.Atan2(h.X-target.X, h.Z-target.Z)-target.Facing)) < 1.5
-			before := target.HP
-			g.damageHero(target, damage, h.X, h.Z)
-			contact.Damage = before - target.HP
-		} else if b := t.base; b != nil {
-			before := b.HP
-			b.HP = math.Max(0, b.HP-damage*.6)
-			contact.Damage = before - b.HP
-			if b.HP == 0 {
-				b.Owner = -1
-				b.Stage = "ruined"
-				b.Captor = -1
-				b.Progress = 0
-			}
+			c.to = &s.Bodies[t.slot]
 		}
-		if contact.Damage <= 0 {
-			continue
+		if h.Class == 2 {
+			h.Volley = append(h.Volley, g.launchProjectile(c))
+		} else {
+			g.resolveContact(c, 0)
 		}
-		h.HitTargets = append(h.HitTargets, contact)
-		if !skill || len(h.HitTargets) >= 3 {
+		attempts++
+		if !skill || attempts >= 3 {
 			break
 		}
-	}
-	if len(h.HitTargets) > 0 {
-		hit := h.HitTargets[0]
-		kind := "hit"
-		if hit.Blocked {
-			kind = "block"
-		}
-		g.heroImpact(h, hit.X, hit.Z, hit.Damage, kind)
 	}
 }
 func (g *Game) damageHero(h *Hero, damage, x, z float64) {

@@ -216,7 +216,7 @@ func TestNoticePreventsInstantRearRetaliation(t *testing.T) {
 	g.rebuildCrowdGrid()
 	before := attacker.HP
 	defenderBefore := defender.HP
-	g.combat()
+	resolveMeleeExchange(g)
 	if attacker.HP != before {
 		t.Fatal("defender attacked behind itself before turning")
 	}

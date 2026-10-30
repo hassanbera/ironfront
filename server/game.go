@@ -295,10 +295,7 @@ func (g *Game) step(dt float64) {
 	g.moveSquads(dt)
 	g.stepCrowd(dt)
 	g.moveHeroes(dt)
-	if g.Time >= g.combatAt {
-		g.combatAt = g.Time + 0.5
-		g.combat()
-	}
+	g.combat()
 	g.capture(dt)
 	g.reinforce()
 	g.crowdSnapshot()
@@ -375,6 +372,7 @@ func (g *Game) rangeOf(s *Squad) float64 {
 }
 func (g *Game) moveSquads(dt float64) {
 	for _, s := range g.Squads {
+		s.moving = false
 		if s.Alive == 0 {
 			continue
 		}
@@ -438,6 +436,7 @@ func (g *Game) moveSquads(dt float64) {
 				nx, nz := s.X+(v.X-s.X)/d*step, s.Z+(v.Z-s.Z)/d*step
 				s.X = nx
 				s.Z = nz
+				s.moving = step > 0
 				s.Travel += step
 				desired = math.Atan2(v.X-s.X, v.Z-s.Z)
 			}
@@ -497,8 +496,11 @@ func (g *Game) attackMultiplier(a, b *Squad) (float64, string) {
 	return g.attackMultiplierAt(a, b, a.X, a.Z, b.X, b.Z)
 }
 func (g *Game) attackMultiplierAt(a, b *Squad, ax, az, bx, bz float64) (float64, string) {
+	return g.attackMultiplierWith(a, b, ax, az, bx, bz, g.formation(a).Shape, g.attackOffense(a, ax, az))
+}
+func (g *Game) attackMultiplierWith(a, b *Squad, ax, az, bx, bz float64, shape string, offense float64) (float64, string) {
 	as, bs := g.spec(a), g.spec(b)
-	af, bf := g.formation(a), g.formation(b)
+	bf := g.formation(b)
 	m, flank := g.defenseMultiplierAt(b, ax, az, bx, bz)
 	if as.Kind == "lancer" && bs.Kind == "cavalry" {
 		if flank == "front" {
@@ -513,48 +515,54 @@ func (g *Game) attackMultiplierAt(a, b *Squad, ax, az, bx, bz float64) (float64,
 	if as.Kind == "camel" && mounted(bs.Kind) {
 		m *= 1.25
 	}
-	if as.Kind == "cavalry" && a.Travel > 12 && af.Shape == "wedge" {
+	if as.Kind == "cavalry" && a.Travel > 12 && shape == "wedge" {
 		m *= 1.25
 	}
 	if as.Kind == "axe" || as.Kind == "berserker" {
 		m *= 1 + bs.Armor*0.9
 	}
-	if af.Shape == "crescent" && flank != "front" {
+	if shape == "crescent" && flank != "front" {
 		m *= 1.2
 	}
-	if as.Kind == "lancer" && af.Shape == "wedge" && flank != "front" {
+	if as.Kind == "lancer" && shape == "wedge" && flank != "front" {
 		m *= 1.2
 	}
 	if ranged(as.Kind) {
 		if bf.Shape == "loose" {
 			m *= 0.75
 		}
-		if g.terrain(b.X, b.Z) == "forest" {
+		if g.terrain(bx, bz) == "forest" {
 			m *= 0.72
 		}
-		if dist(a.X, a.Z, b.X, b.Z) < 10 {
+		if dist(ax, az, bx, bz) < 10 {
 			m *= 0.48
 		}
-		if len(a.Path) > 0 && as.Kind == "horseArcher" && af.Shape != "loose" {
-			m *= 0.65
-		}
 	}
-	if mounted(as.Kind) && g.terrain(a.X, a.Z) == "forest" {
+	return m * offense, flank
+}
+func (g *Game) attackOffense(a *Squad, x, z float64) float64 {
+	kind, af := g.spec(a).Kind, g.formation(a)
+	m := af.Attack
+	if kind == "horseArcher" && a.moving && af.Shape != "loose" {
+		m *= .65
+	}
+	if mounted(kind) && g.terrain(x, z) == "forest" {
 		m *= 0.72
 	}
 	if g.Time < a.Reform {
 		m *= 0.8
 	}
-	return m * af.Attack, flank
+	return m
 }
 func (g *Game) damageSquad(s *Squad, damage float64, owner, attacker int, flank string) {
 	if s.Alive == 0 {
 		return
 	}
 	old := s.Alive
-	if s.Flash != g.Time {
+	if s.hitEpoch != g.hitEpoch || g.Time-s.Flash > .11 {
 		s.HitSlots = 0
 	}
+	s.hitEpoch = g.hitEpoch
 	spec := g.spec(s)
 	s.HP = math.Max(0, s.HP-damage)
 	s.Alive = int(math.Ceil(s.HP / spec.HP))

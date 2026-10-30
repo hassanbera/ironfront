@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Characters, outfit } from "./characters";
 import { heroMovement, movementClip } from "./hero-controls";
 import { HeroTrack } from "./hero-track";
+import { attackProgress } from "./attack-motion";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
   rules,
@@ -12,6 +13,7 @@ import {
   terrainAt,
   type GameState,
   type Squad,
+  type ShotVisual,
 } from "./types";
 
 type Part = {
@@ -151,12 +153,15 @@ export class World {
   private animation = 0;
   private markers: Array<{ mesh: THREE.Mesh; life: number }> = [];
   private projectiles: Array<{
-    mesh: THREE.Mesh;
     from: THREE.Vector3;
     to: THREE.Vector3;
-    life: number;
-    duration: number;
+    shot: ShotVisual;
   }> = [];
+  private arrows = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.07, 0.07, 1.6),
+    new THREE.MeshBasicMaterial({ color: 0xeedcac }),
+    128,
+  );
   private shots = new Map<number, number>();
   private audio: AudioContext | null = null;
   private quality = "high";
@@ -250,6 +255,10 @@ export class World {
     sun.shadow.normalBias = 0.45;
     this.scene.add(sun);
     this.scene.add(this.root, this.actors, this.effects);
+    this.arrows.count = 0;
+    this.arrows.frustumCulled = false;
+    this.arrows.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.scene.add(this.arrows);
     this.scene.add(this.characters.group);
     this.characters
       .load()
@@ -786,6 +795,8 @@ export class World {
       this.fallen.length = 0;
       this.hits.clear();
       this.shots.clear();
+      this.projectiles.length = 0;
+      this.arrows.count = 0;
       this.heroMotion.clear();
       this.heroTracks.clear();
       this.heroViews.clear();
@@ -809,8 +820,9 @@ export class World {
         );
         if (squad.hp < old.hp) {
           if (squad.hitSlots && squad.flash !== old.flash) {
-            for (let slot=0;slot<25;slot++)
-              if (squad.hitSlots & (1<<slot)) this.soldierHits.set(squad.id*32+slot,this.time);
+            for (let slot = 0; slot < 25; slot++)
+              if (squad.hitSlots & (1 << slot))
+                this.soldierHits.set(squad.id * 32 + slot, this.time);
           } else if (!exactHit) this.hits.set(squad.id, this.time);
         }
         if (squad.alive < old.alive) {
@@ -973,43 +985,116 @@ export class World {
       const flag = this.outpostFlags[o.id];
       if (flag) (flag.material as THREE.MeshStandardMaterial).color.set(col);
     }
-    if (!this.preview)
+    if (!this.preview) {
       for (const s of state.squads) {
-        if (s.attackAt > 0 && s.attackAt !== (this.shots.get(s.id) || 0)) {
+        if (s.attackSlots !== undefined) {
+          if (s.volley?.length) this.acceptVolley(s.id, s.volley);
+        } else if (
+          s.attackAt > 0 &&
+          s.attackAt !== (this.shots.get(s.id) || 0)
+        ) {
           this.shots.set(s.id, s.attackAt);
-          const spec = rules.factions[s.owner].units[s.class];
-          if (isRanged(spec.kind) && this.projectiles.length < 100)
+          if (isRanged(rules.factions[s.owner].units[s.class].kind))
             this.shoot(s);
-          if (this.sound && s.owner === owner && Math.random() < 0.15)
-            this.tone(85, 0.04, 0.018);
         }
+        if (
+          this.sound &&
+          s.owner === owner &&
+          s.attackAt > 0 &&
+          s.attackAt !==
+            previous?.squads.find((p) => p.id === s.id)?.attackAt &&
+          Math.random() < 0.15
+        )
+          this.tone(85, 0.04, 0.018);
       }
+      for (const h of state.heroes)
+        if (h.volley?.length) this.acceptVolley(-1 - h.owner, h.volley);
+    }
   }
+  private acceptVolley(key: number, volley: ShotVisual[]) {
+    const stamp = volley[0].at;
+    if (this.shots.get(key) === stamp) return;
+    this.shots.set(key, stamp);
+    for (const shot of volley) this.addProjectile(shot);
+  }
+  private addProjectile(shot: ShotVisual) {
+    if (this.projectiles.length >= 128 || shot.land <= this.serverNow()) return;
+    this.projectiles.push({
+      shot,
+      from: new THREE.Vector3(
+        shot.fromX,
+        heightAt(this.mapID, shot.fromX, shot.fromZ) + shot.height,
+        shot.fromZ,
+      ),
+      to: new THREE.Vector3(
+        shot.x,
+        heightAt(this.mapID, shot.x, shot.z) + 1.1,
+        shot.z,
+      ),
+    });
+  }
+  // Compatibility for an older server; current servers supply launch/arrival times.
   private shoot(s: Squad) {
-    for (let i = 0; i < 3; i++) {
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.07, 0.07, 1.6),
-        new THREE.MeshBasicMaterial({ color: "#eedcac" }),
-      );
-      const from = new THREE.Vector3(
-          s.x + (i - 1) * 1.6,
-          heightAt(this.mapID, s.x, s.z) + 2,
-          s.z,
-        ),
-        to = new THREE.Vector3(
-          s.aimX + (i - 1) * 1.2,
-          heightAt(this.mapID, s.aimX, s.aimZ) + 0.8,
-          s.aimZ,
-        );
-      mesh.position.copy(from);
-      this.effects.add(mesh);
-      this.projectiles.push({
-        mesh,
-        from,
-        to,
-        life: 0,
-        duration: 0.5 + from.distanceTo(to) / 80,
+    const at = this.serverNow();
+    for (let i = 0; i < 3; i++)
+      this.addProjectile({
+        at,
+        land: at + 0.5 + Math.hypot(s.aimX - s.x, s.aimZ - s.z) / 80,
+        fromX: s.x + (i - 1) * 1.6,
+        fromZ: s.z,
+        height: 2,
+        x: s.aimX + (i - 1) * 1.2,
+        z: s.aimZ,
+        kind: "",
+        id: 0,
+        slot: -1,
       });
+  }
+  private serverNow() {
+    return (
+      (this.state?.time || 0) +
+      (this.preview ? 0 : Math.min(0.15, this.time - this.snapshotAt))
+    );
+  }
+  private drawProjectiles() {
+    const now = this.serverNow();
+    let count = 0;
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i],
+        s = p.shot;
+      if (now >= s.land) {
+        this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
+        this.projectiles.pop();
+        continue;
+      }
+      if (now < s.at) continue;
+      const target =
+        s.kind === "soldier"
+          ? this.bodies.get(s.id * 32 + s.slot)
+          : s.kind === "hero"
+            ? this.heroViews.get(s.id)
+            : undefined;
+      if (target)
+        p.to.set(
+          target.x,
+          heightAt(this.mapID, target.x, target.z) + 1.1,
+          target.z,
+        );
+      const t = clamp((now - s.at) / (s.land - s.at), 0, 1);
+      temp.position.lerpVectors(p.from, p.to, t);
+      temp.position.y +=
+        Math.sin(t * Math.PI) * Math.min(4, p.from.distanceTo(p.to) * 0.15);
+      temp.scale.setScalar(1);
+      temp.lookAt(p.to);
+      temp.updateMatrix();
+      this.arrows.setMatrixAt(count++, temp.matrix);
+    }
+    this.arrows.count = count;
+    this.arrows.visible = count > 0;
+    if (count) {
+      this.arrows.instanceMatrix.clearUpdateRanges();
+      this.arrows.instanceMatrix.addUpdateRange(0, count * 16);
+      this.arrows.instanceMatrix.needsUpdate = true;
     }
   }
   private soldier(
@@ -1351,9 +1436,7 @@ export class World {
       );
     }
     const alpha = clamp((this.time - this.snapshotAt) / this.bodySpan, 0, 1);
-    const serverTime =
-      state.time +
-      (this.preview ? 0 : Math.min(0.15, this.time - this.snapshotAt));
+    const serverTime = this.serverNow();
     const ease = 1 - Math.exp(-dt * 16);
     for (const s of state.squads) {
       if (s.alive <= 0) continue;
@@ -1408,17 +1491,15 @@ export class World {
           this.drawVisibility = body.fade;
         } else this.drawVisibility = fade;
         if (this.characters.ready) {
-          const attackAge = serverTime - s.attackAt - (i % 5) * 0.045;
+          const attackPhase = attackProgress(s, i, serverTime);
           const exactHitAge = this.time - (this.soldierHits.get(key) ?? -100);
           const hitAge = Math.min(
             exactHitAge,
             this.time - (this.hits.get(s.id) ?? -100) - (i % 4) * 0.03,
           );
-          const attacking =
-            s.attackAt > 0 && attackAge >= 0 && attackAge < 0.82 &&
-            (s.attackSlots === undefined || (s.attackSlots & (1<<i)) !== 0);
+          const attacking = attackPhase >= 0;
           const motion =
-            exactHitAge < 0.28 && !mounted
+            exactHitAge < 0.28 && !mounted && !attacking
               ? "hit"
               : attacking
                 ? mounted
@@ -1437,14 +1518,13 @@ export class World {
             motion === "hit"
               ? hitAge * 2.5
               : attacking
-                ? (attackAge / 0.82) *
-                  this.characters.duration(gear.model, motion)
+                ? attackPhase * this.characters.duration(gear.model, motion)
                 : actorMoving && body
                   ? body.phase + i * 0.173
                   : this.time + i * 0.173;
           const lunge =
             !body && attacking && !isRanged(spec.kind) && !mounted
-              ? Math.sin((attackAge / 0.82) * Math.PI) * 0.28
+              ? Math.sin(attackPhase * Math.PI) * 0.28
               : 0;
           const ground = heightAt(this.mapID, x, z);
           if (mounted)
@@ -1927,20 +2007,7 @@ export class World {
         this.markers.splice(i, 1);
       }
     }
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const p = this.projectiles[i];
-      p.life += dt;
-      const t = clamp(p.life / p.duration, 0, 1);
-      p.mesh.position.lerpVectors(p.from, p.to, t);
-      p.mesh.position.y += Math.sin(t * Math.PI) * 4;
-      p.mesh.lookAt(p.to);
-      if (t === 1) {
-        this.effects.remove(p.mesh);
-        p.mesh.geometry.dispose();
-        (p.mesh.material as THREE.Material).dispose();
-        this.projectiles.splice(i, 1);
-      }
-    }
+    this.drawProjectiles();
     this.renderer.render(this.scene, this.camera);
     this.drawCalls = this.renderer.info.render.calls;
     this.animation = requestAnimationFrame(this.animate);
@@ -2399,6 +2466,8 @@ export class World {
     window.removeEventListener("resize", this.resize);
     this.renderer.dispose();
     this.characters.dispose();
+    this.arrows.geometry.dispose();
+    (this.arrows.material as THREE.Material).dispose();
     this.audio?.close();
   }
 }
