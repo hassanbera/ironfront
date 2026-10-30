@@ -103,9 +103,9 @@ for (const [name,file] of [['knight','Knight'],['viking','Barbarian'],['ranger',
     const clip=sourceClips.get(clipName);if(!clip)throw new Error('Missing clip: '+clipName);
     mixer.stopAllAction();const action=mixer.clipAction(clip);action.setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.play();
     const frames=Math.max(2,Math.ceil(clip.duration*24)+1),start=mats.length/(bones*16);
-    animations[key]={start,frames,duration:clip.duration};
+    animations[key]={start,frames,duration:Math.max(clip.duration,1/24)};
     for(let frame=0;frame<frames;frame++) {
-      mixer.setTime(Math.min(clip.duration-0.00001,frame/(frames-1)*clip.duration));
+      mixer.setTime(clip.duration>0?Math.min(clip.duration-0.00001,frame/(frames-1)*clip.duration):0);
       const restored=[];
       if(key==='shoot'||key==='ride_shoot') for(const nodeName of ['upperarml','lowerarml','upperarmr','lowerarmr','handslotl','handslotr']) { const node=scene.getObjectByName(nodeName);restored.push({node,position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone()}); }
       if(key.startsWith('ride_')) { for(const part of seated)part.bone.quaternion.copy(part.rotation);hip.position.copy(sitHeight); }
