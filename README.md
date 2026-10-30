@@ -16,6 +16,10 @@ GitHub reposu kaynak kod içerir; `.exe`, `node_modules` ve `frontend/dist` repo
 
 Oyun klavye ve fare içindir. Dar ekran menüsü uyarlanır, dokunmatik savaş kontrolü yoktur.
 
+### Güncellenen hero sürümü
+
+Yerel teslimde `start-hero.cmd`, yeni sunucuyu `http://localhost:8788` adresinde çalıştırır. Bu ayrı port, 8787'de açık kalan eski maçları korumak içindir. Repodan hazırlamak için frontend'i derle, ardından `server/` içinden `go build -o ../ironfront-server-hero.exe .` çalıştır. Normal kaynak kurulumu ve dağıtımda varsayılan 8787 kullanılabilir; yeni hero davranışları için sunucu ve istemci birlikte güncel olmalıdır. [Hero kontrol ve temas değişiklikleri](docs/HERO_FEEL.md).
+
 ## Kaynaktan çalıştır
 
 Node.js 22.12+ ve Go 1.23+ gerekir. Bu paket Go 1.27.3 ile doğrulandı.
@@ -84,7 +88,9 @@ go run .
 | Minimap sol / sağ tık | Kamerayı taşı / saldırarak ilerle |
 | Tab | Kahramana / RTS'ye geç |
 
-Kahraman: **WASD** hareket, **fare** bakış, **sol tık** saldırı, **sağ tık** önden blok, **Space** zıplama, **Shift** kaçınma, **Q** sınıf yeteneği. Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiyorsa sol tuşla sürüklemek bakış yönünü değiştirir. Kahraman kontrolündeyken birlikler emirlerini sürdürür.
+Kahraman: **WASD / ok tuşları** kameraya göre hareket, **fare** bakış, **sol tık** saldırı, **sağ tık** önden blok, **Space** zıplama, **Shift + yön** o yöne kaçınma, yalnız **Shift** geri kaçınma, **Q** sınıf yeteneği. Arka arkaya tıklamalar kılıç savurma, çapraz kesiş ve saplama sırasını kullanır; 1,2 saniye ara verince sıra sıfırlanır. Hazırlık sırasında blok/kaçınma saldırıyı iptal eder. İsabet ve blok yazısı yalnızca sunucu teması doğruladığında çıkar. Ses düğmesi adım, savuruş, temas ve kalkan seslerini açar.
+
+Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiyorsa sol tuşla sürüklemek bakış yönünü değiştirir. Kahraman kontrolündeyken birlikler emirlerini sürdürür.
 
 ## Yapı ve performans
 
@@ -96,8 +102,8 @@ Kahraman: **WASD** hareket, **fare** bakış, **sol tık** saldırı, **sağ tı
 - Bağlantı başına 4 KB mesaj sınırı, komut hız sınırı, oda limiti, origin denetimi, yavaş istemcide eski snapshot düşürme ve boş odaların 2 dakika sonra temizlenmesi vardır.
 - Oturum anahtarıyla kısa bağlantı kesilmesinden otomatik dönüş vardır. Sayfa yenileme/kapama sonrası kalıcı oturum yoktur. Bilerek ayrılan oyuncunun ordusu botlara geçer.
 - Kalıcı hesap, eşleştirme, maç geçmişi veya kayıt yoktur. Bu yüzden PostgreSQL eklenmedi. Sunucu kapanırsa odalar kaybolur.
-- Gölgesiz performans modu Ayarlar içindedir. CC0 çevre modelleri ve yaklaşık 4,7 MB animasyonlu karakter verisi yerel olarak sunulur.
-- KayKit tabanlı üç gövde modeli, faction kumaş renkleri ve sınıfa uygun silahlarla kullanılır. 20 hareket/poz klibi GPU üzerinde instancing ile oynatılır; her asker için ayrı CPU iskeleti güncellenmez. Üç geometri detay seviyesi kamera uzaklığına göre seçilir.
+- Gölgesiz performans modu Ayarlar içindedir. CC0 çevre modelleri ve yaklaşık 5,8 MB animasyonlu karakter verisi yerel olarak sunulur.
+- KayKit tabanlı üç gövde modeli, kapüşon dahil faction kumaş renkleri ve sınıfa uygun silahlarla kullanılır. 33 hareket/poz klibi GPU üzerinde instancing ile oynatılır; her asker için ayrı CPU iskeleti güncellenmez. Üç geometri detay seviyesi kamera uzaklığına göre seçilir.
 - Hareketler sunucunun saldırı, hasar, kayıp ve hero durumundan tetiklenir. Geçişler yumuşatılır; yay kirişi gerilir, kalkan kalkar, ölen asker kısa süre yerde kalır. At/deve gövdeleri ve yürüyüşleri prosedüreldir. Karakterler stilizedir; fizik tabanlı ragdoll veya her faction için ayrı tarihsel model seti yoktur.
 
 Kural değerlerinin tek kaynağı: `server/rules.json`; Go bunu embed eder, Vite aynı dosyayı bundle'a alır. Denge değişikliklerinden sonra **iki tarafı da yeniden derle**. İlk değerler tarafların güçlü/zayıf yönlerini yaratır; rekabetçi denge ve meta garantisi değildir.
@@ -116,6 +122,7 @@ Sunucu açıkken, proje kökünden:
 ```sh
 node scripts/network-test.mjs
 node scripts/validate-character-assets.mjs
+node --experimental-strip-types scripts/hero-controls-test.mjs
 ```
 
 Ağ testi dört gerçek WebSocket bağlantısı açar: beşinci oyuncu reddi, oda sahibinin başlatması, 400 asker, emir sahipliği, hareket/dizilim/hero senkronizasyonu ve doğru/yanlış token ile yeniden bağlantıyı kontrol eder. Go testleri ana üs devri, ele geçirme, cooldown, kapasite, flank, fark etme, hero blok/kaçınma, tüm haritalarda yol bulma ve üç tam bot maçını kapsar.

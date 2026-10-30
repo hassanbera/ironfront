@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+Hero kontrol geçişi tamamlandı: kamera yönüne göre A/D düzeltmesi, ok tuşları, geri/yan adımlar, yönünü koruyan kaçınma, 33 animasyon, temas zamanlaması, saldırı sırası ve sunucu onaylı isabet geri bildirimi. Turks kapüşonları da faction rengine boyanır. Ayrıntılar ve kontroller: [HERO_FEEL.md](HERO_FEEL.md).
+
 | Sıra | Planlanan parça | Bitirme ölçütü | Önerilen commit kapsamı |
 |---|---|---|---|
 | 1 | CI etkinleştirme | Workflow yetkisi sağlanır; frontend build, Go race/vet ve dört istemci testi Linux'ta geçer | `ci: enable verified multiplayer checks` |
