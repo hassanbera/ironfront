@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
 export default defineConfig({
   server: {
     port: 5173,
@@ -10,6 +11,12 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
-    rollupOptions: { output: { manualChunks: { three: ["three"] } } },
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        drill: fileURLToPath(new URL("./drill.html", import.meta.url)),
+      },
+      output: { manualChunks: { three: ["three"] } },
+    },
   },
 });
