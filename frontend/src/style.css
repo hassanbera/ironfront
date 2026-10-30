@@ -1229,8 +1229,7 @@ body.menu #viewport:after {
   font-size: 10px;
   padding: 9px 14px;
   border-radius: 3px;
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
 }
 .connection-banner {
   position: absolute;

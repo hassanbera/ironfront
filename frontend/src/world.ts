@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Characters, outfit } from "./characters";
 import { heroMovement, movementClip } from "./hero-controls";
+import { HeroTrack } from "./hero-track";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
   rules,
@@ -37,6 +38,7 @@ type Placement = {
   rotation: number;
 };
 type Smooth = { x: number; z: number; facing: number };
+type HeroView = Smooth & { y: number; dx: number; dz: number };
 const factionColors = rules.factions.map((f) => new THREE.Color(f.color));
 const color = new THREE.Color();
 const temp = new THREE.Object3D();
@@ -136,8 +138,12 @@ export class World {
   private mouse = new THREE.Vector2();
   private pointer = { down: false, x: 0, y: 0, button: 0 };
   private box: HTMLDivElement;
-  private nextMouseLock = 0;
-  private mouseLockPending = false;
+  private orbitPointer: number | null = null;
+  private orbitX = 0;
+  private orbitY = 0;
+  private heroTracks = new Map<number, HeroTrack>();
+  private heroViews = new Map<number, HeroView>();
+  private heroBoom = 0;
   private time = performance.now() / 1000;
   private frame = 0;
   private disposed = false;
@@ -781,6 +787,9 @@ export class World {
       this.hits.clear();
       this.shots.clear();
       this.heroMotion.clear();
+      this.heroTracks.clear();
+      this.heroViews.clear();
+      this.heroBoom = 0;
       this.feedbackUntil = 0;
       this.bodies.clear();
       this.soldierHits.clear();
@@ -896,6 +905,14 @@ export class World {
     }
     const now = performance.now() / 1000,
       alpha = clamp((now - this.snapshotAt) / this.bodySpan, 0, 1);
+    for (const h of state.heroes) {
+      let track = this.heroTracks.get(h.owner);
+      if (!track) {
+        track = new HeroTrack();
+        this.heroTracks.set(h.owner, track);
+      }
+      track.push(now, h);
+    }
     for (const [key, qx, qz] of state.crowd ?? []) {
       const x = qx / 100,
         z = qz / 100;
@@ -1289,6 +1306,28 @@ export class World {
       );
     }
   }
+  private prepareHeroes() {
+    for (const h of this.state?.heroes ?? []) {
+      let view = this.heroViews.get(h.owner);
+      if (!view) {
+        view = { x: h.x, y: h.y, z: h.z, facing: h.facing, dx: 0, dz: 0 };
+        this.heroViews.set(h.owner, view);
+      }
+      const x = view.x,
+        z = view.z;
+      this.heroTracks.get(h.owner)?.sample(this.time, view);
+      view.dx = view.x - x;
+      view.dz = view.z - z;
+      if (Math.hypot(view.dx, view.dz) > 30) {
+        view.dx = 0;
+        view.dz = 0;
+        if (h.owner === this.owner) this.heroBoom = 0;
+      }
+      view.facing =
+        this.heroMode && h.owner === this.owner ? this.heroYaw : h.facing;
+      this.smooth.set(10000 + h.owner, view);
+    }
+  }
   private drawArmy(dt: number) {
     const state = this.state;
     if (!state) return;
@@ -1300,7 +1339,9 @@ export class World {
       const p = this.smooth.get(10000 + this.owner) ?? activeHero;
       this.heroSight.set(
         p.x,
-        heightAt(this.mapID, p.x, p.z) + 1.5 + activeHero.y,
+        heightAt(this.mapID, p.x, p.z) +
+          1.5 +
+          (this.heroViews.get(this.owner)?.y ?? activeHero.y),
         p.z,
       );
     }
@@ -1459,20 +1500,13 @@ export class World {
     for (const h of state.heroes) {
       if (h.hp <= 0) continue;
       const id = 10000 + h.owner;
-      let v = this.smooth.get(id);
-      if (!v || Math.hypot(v.x - h.x, v.z - h.z) > 30) {
-        v = { x: h.x, z: h.z, facing: h.facing };
-        this.smooth.set(id, v);
-      }
+      const v = this.heroViews.get(h.owner);
+      if (!v) continue;
       const local = this.heroMode && h.owner === this.owner;
-      const heroEase = 1 - Math.exp(-dt * (local ? 28 : 16));
-      const dx = (h.x - v.x) * heroEase,
-        dz = (h.z - v.z) * heroEase;
+      const dx = v.dx,
+        dz = v.dz;
       const speed = Math.hypot(dx, dz) / Math.max(dt, 0.001);
       const moving = speed > 0.25;
-      v.x += dx;
-      v.z += dz;
-      v.facing = local ? this.heroYaw : h.facing;
       let locomotion = this.heroMotion.get(h.owner);
       if (!locomotion) {
         locomotion = { x: 0, z: 0, phase: 0, wasAir: false, landed: -10 };
@@ -1483,11 +1517,11 @@ export class World {
         locomotion.z = dz;
         locomotion.phase += Math.hypot(dx, dz) * 0.18;
       }
-      if (locomotion.wasAir && h.y <= 0.01) {
+      if (locomotion.wasAir && v.y <= 0.01) {
         locomotion.landed = this.time;
         if (local) this.combatSound("step");
       }
-      locomotion.wasAir = h.y > 0.01;
+      locomotion.wasAir = v.y > 0.01;
       if (this.characters.ready) {
         const kind = h.class === 2 ? "archer" : "sword",
           gear = outfit(h.owner, kind, h.class);
@@ -1514,7 +1548,7 @@ export class World {
               v.facing,
               true,
             )
-          : h.y > 0.1
+          : v.y > 0.1
             ? "jump"
             : h.block
               ? hitAge < 0.24
@@ -1550,7 +1584,7 @@ export class World {
           id: `hero:${h.owner}`,
           ...gear,
           x: v.x,
-          y: heightAt(this.mapID, v.x, v.z) + h.y,
+          y: heightAt(this.mapID, v.x, v.z) + v.y,
           z: v.z,
           facing: v.facing,
           color: factionColors[h.owner],
@@ -1581,12 +1615,12 @@ export class World {
           this.drawSwing(
             v.x,
             v.z,
-            h.y,
+            v.y,
             v.facing,
             attacking && h.class !== 2 ? attackAge / duration : -1,
             h.attackKind || 0,
           );
-          if (moving && !dodging && h.y <= 0.01 && this.time > this.footstep) {
+          if (moving && !dodging && v.y <= 0.01 && this.time > this.footstep) {
             this.footstep = this.time + (h.block ? 0.4 : 0.28);
             this.combatSound("step");
           }
@@ -1603,7 +1637,7 @@ export class World {
           state.time - h.attackAt < 0.3,
           true,
           h.block,
-          h.y,
+          v.y,
         );
       this.put(
         "ring",
@@ -1731,12 +1765,12 @@ export class World {
     if (this.heroMode && this.state) {
       const h = this.state.heroes.find((h) => h.owner === this.owner);
       if (h) {
-        const p = this.smooth.get(10000 + h.owner) ?? h;
+        const p = this.heroViews.get(h.owner) ?? h;
         const yaw = this.heroYaw;
         const dist = 8.2;
         const look = this.cameraLook.set(
           p.x,
-          heightAt(this.mapID, p.x, p.z) + 1.9 + h.y,
+          heightAt(this.mapID, p.x, p.z) + 1.9 + p.y,
           p.z,
         );
         const goal = this.cameraGoal.set(
@@ -1761,16 +1795,15 @@ export class World {
         for (const b of this.state.bases) obstruct(b.x, b.z, 10);
         for (const b of rules.maps[this.mapID].obstacles)
           obstruct(b.x, b.z, b.r);
-        goal.copy(look).addScaledVector(direction, boom);
-        goal.y = Math.max(goal.y, heightAt(this.mapID, goal.x, goal.z) + 1.5);
-        this.camera.position.lerp(goal, 1 - Math.exp(-dt * 12));
-        if (this.camera.position.distanceTo(look) > boom) {
-          this.cameraDirection.copy(this.camera.position).sub(look).normalize();
-          this.camera.position
-            .copy(look)
-            .addScaledVector(this.cameraDirection, boom);
-        }
-        this.camera.position.y += Math.sin(this.time * 85) * this.cameraKick;
+        // Follow the exact render pose. Only obstacle recovery changes the boom;
+        // a second world-space follow filter makes the hero wobble on screen.
+        if (this.heroBoom === 0 || boom < this.heroBoom) this.heroBoom = boom;
+        else this.heroBoom += (boom - this.heroBoom) * (1 - Math.exp(-dt * 6));
+        this.camera.position
+          .copy(look)
+          .addScaledVector(direction, this.heroBoom);
+        this.camera.position.y +=
+          Math.sin(this.time * 45) * this.cameraKick * 0.25;
         this.camera.position.y = Math.max(
           this.camera.position.y,
           heightAt(this.mapID, this.camera.position.x, this.camera.position.z) +
@@ -1824,6 +1857,7 @@ export class World {
     this.cameraKick *= Math.exp(-dt * 22);
     this.frame++;
     this.fps = this.fps * 0.97 + (1 / Math.max(elapsed, 0.001)) * 0.03;
+    this.prepareHeroes();
     this.updateCamera(dt);
     this.camera.updateMatrixWorld();
     this.drawArmy(dt);
@@ -1957,11 +1991,20 @@ export class World {
   }
   private events() {
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    this.canvas.addEventListener("auxclick", (e) => {
+      if (e.button === 1) e.preventDefault();
+    });
     this.canvas.addEventListener("pointerdown", (e) => {
       this.canvas.focus();
       if (this.heroMode) {
+        if (e.button === 1) {
+          e.preventDefault();
+          this.orbitPointer = e.pointerId;
+          this.orbitX = e.clientX;
+          this.orbitY = e.clientY;
+          this.canvas.setPointerCapture(e.pointerId);
+        }
         if (e.button === 0) this.onAction("attack");
-        if (e.button === 0) this.requestMouseLock();
         if (e.button === 2) {
           this.keys.add("Block");
           this.onInput();
@@ -1978,16 +2021,15 @@ export class World {
     });
     this.canvas.addEventListener("pointermove", (e) => {
       if (this.heroMode) {
-        if (
-          document.pointerLockElement === this.canvas ||
-          (e.buttons & 1) !== 0
-        ) {
-          this.heroYaw -= e.movementX * 0.0025;
+        if (this.orbitPointer === e.pointerId && (e.buttons & 4) !== 0) {
+          this.heroYaw -= (e.clientX - this.orbitX) * 0.0025;
           this.heroPitch = clamp(
-            this.heroPitch + e.movementY * 0.002,
+            this.heroPitch + (e.clientY - this.orbitY) * 0.002,
             -0.15,
             0.8,
           );
+          this.orbitX = e.clientX;
+          this.orbitY = e.clientY;
         }
         return;
       }
@@ -2012,6 +2054,10 @@ export class World {
     });
     window.addEventListener("pointerup", (e) => {
       if (this.heroMode) {
+        if (e.button === 1) {
+          this.endHeroOrbit();
+          this.onInput();
+        }
         if (e.button === 2) {
           this.keys.delete("Block");
           this.onInput();
@@ -2066,6 +2112,14 @@ export class World {
         this.onSelect(ids, e.shiftKey);
       }
     });
+    this.canvas.addEventListener("lostpointercapture", () => {
+      this.orbitPointer = null;
+    });
+    this.canvas.addEventListener("pointercancel", () => {
+      this.endHeroOrbit();
+      this.keys.delete("Block");
+      this.onInput();
+    });
     this.canvas.addEventListener(
       "wheel",
       (e) => {
@@ -2081,6 +2135,12 @@ export class World {
         document.querySelector(".modal-backdrop")
       )
         return;
+      if (this.heroMode && e.code === "Escape") {
+        this.endHeroOrbit();
+        this.keys.clear();
+        this.onInput();
+        return;
+      }
       this.keys.add(e.code);
       if (
         ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
@@ -2101,38 +2161,18 @@ export class World {
       if (this.heroMode) this.onInput();
     });
     window.addEventListener("blur", () => {
+      this.endHeroOrbit();
       this.keys.clear();
       this.onInput();
       this.pointer.down = false;
       this.box.style.display = "none";
     });
-    document.addEventListener("pointerlockchange", () => {
-      if (document.pointerLockElement !== this.canvas) {
-        this.keys.clear();
-        this.onInput();
-      }
-    });
   }
-  requestMouseLock() {
-    const now = performance.now();
-    if (
-      !this.heroMode ||
-      document.pointerLockElement === this.canvas ||
-      this.mouseLockPending ||
-      now < this.nextMouseLock
-    )
-      return;
-    this.nextMouseLock = now + 2000;
-    this.mouseLockPending = true;
-    try {
-      Promise.resolve(this.canvas.requestPointerLock())
-        .catch(() => {})
-        .finally(() => {
-          this.mouseLockPending = false;
-        });
-    } catch {
-      this.mouseLockPending = false;
-    }
+  private endHeroOrbit() {
+    const pointer = this.orbitPointer;
+    this.orbitPointer = null;
+    if (pointer !== null && this.canvas.hasPointerCapture(pointer))
+      this.canvas.releasePointerCapture(pointer);
   }
   enterHero() {
     const h = this.state?.heroes.find((h) => h.owner === this.owner);
@@ -2140,14 +2180,15 @@ export class World {
     this.heroMode = true;
     this.heroYaw = h.facing;
     this.heroPitch = 0.24;
+    this.heroBoom = 0;
+    this.endHeroOrbit();
     this.keys.clear();
-    this.requestMouseLock();
     this.canvas.focus();
   }
   exitHero() {
+    this.endHeroOrbit();
     this.heroMode = false;
     this.keys.clear();
-    if (document.pointerLockElement) document.exitPointerLock();
     const h = this.state?.heroes.find((h) => h.owner === this.owner);
     if (h) {
       this.focus.set(h.x, 0, h.z);
