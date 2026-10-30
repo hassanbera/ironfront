@@ -92,7 +92,7 @@ go run .
 | Minimap sol / sağ tık | Kamerayı taşı / saldırarak ilerle |
 | Tab | Kahramana / RTS'ye geç |
 
-Kahraman: **WASD / ok tuşları** kameraya göre hareket, **fare** bakış, **sol tık** saldırı, **sağ tık** önden blok, **Space** zıplama, **Shift + yön** o yöne kaçınma, yalnız **Shift** geri kaçınma, **Q** sınıf yeteneği. Arka arkaya tıklamalar kılıç savurma, çapraz kesiş ve saplama sırasını kullanır; 1,2 saniye ara verince sıra sıfırlanır. Hazırlık sırasında blok/kaçınma saldırıyı iptal eder. İsabet ve blok yazısı yalnızca sunucu teması doğruladığında çıkar. Ses düğmesi adım, savuruş, temas ve kalkan seslerini açar.
+Kahraman: **WASD / ok tuşları** kameraya göre hareket, **orta fare tuşu basılı + sürükle** kamera ve karakter dönüşü, **sol tık** saldırı, **sağ tık** önden blok, **Space** zıplama, **Shift + yön** o yöne kaçınma, yalnız **Shift** geri kaçınma, **Q** sınıf yeteneği. Arka arkaya tıklamalar kılıç savurma, çapraz kesiş ve saplama sırasını kullanır; 1,2 saniye ara verince sıra sıfırlanır. Hazırlık sırasında blok/kaçınma saldırıyı iptal eder. İsabet ve blok yazısı yalnızca sunucu teması doğruladığında çıkar. Ses düğmesi adım, savuruş, temas ve kalkan seslerini açar.
 
 Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiyorsa sol tuşla sürüklemek bakış yönünü değiştirir. Kahraman kontrolündeyken birlikler emirlerini sürdürür.
 
@@ -128,12 +128,15 @@ Sunucu açıkken, proje kökünden:
 node scripts/network-test.mjs
 node scripts/validate-character-assets.mjs
 node --experimental-strip-types scripts/hero-controls-test.mjs
+node --experimental-strip-types scripts/hero-track-test.mjs
 node --experimental-strip-types scripts/crowd-visibility-test.mjs
 ```
 
 Ağ testi dört gerçek WebSocket bağlantısı açar: beşinci oyuncu reddi, oda sahibinin başlatması, 400 asker, emir sahipliği, hareket/dizilim/hero senkronizasyonu ve doğru/yanlış token ile yeniden bağlantıyı kontrol eder. Go testleri ana üs devri, ele geçirme, cooldown, kapasite, flank, fark etme, hero blok/kaçınma, tüm haritalarda yol bulma ve üç tam bot maçını kapsar.
 
 Karakter kontrolü klip sürelerini, sonlu poz matrislerini, kemik ağırlıklarını, indeksleri ve detay seviyelerini doğrular; sunucu gerektirmez. İlk görsel geçiş: [VISUAL_UPGRADE.md](docs/VISUAL_UPGRADE.md). Güncel çarpışma/kamera testleri, ölçüm koşulları ve tekrar edilebilir `/crowd-lab.html` sayfası: [CROWD_VALIDATION.md](docs/CROWD_VALIDATION.md).
+
+Kamera takibi ve orta fare tuşu değişikliğinin ölçümü: [CAMERA_CONTROLS.md](docs/CAMERA_CONTROLS.md).
 
 ## Vercel'e hazırlık
 

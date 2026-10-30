@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+Hero yürüyüş kamerası, karakterle aynı karede hesaplanan tek bir konumu takip eder. Konum/zıplama için kısa snapshot tamponu ve orta tuşla basılı sürükleme kontrolü eklendi. Tarayıcı ölçümü ve kontroller: [CAMERA_CONTROLS.md](CAMERA_CONTROLS.md).
+
 Kalabalık geçişi tamamlandı: sabit asker kimlikleri, komşuluk ızgarasıyla dairesel ayrıştırma, hero için alt adımlı çarpışma, gerçek asker konumuna isabet, kamerayı kapatan gövdeleri soluklaştırma ve hero görünümünde detay/veri aktarımı optimizasyonu. Yerel 400 asker ölçümleri ve sınırlar: [CROWD_VALIDATION.md](CROWD_VALIDATION.md).
 
 Hero kontrol geçişi tamamlandı: kamera yönüne göre A/D düzeltmesi, ok tuşları, geri/yan adımlar, yönünü koruyan kaçınma, 33 animasyon, temas zamanlaması, saldırı sırası ve sunucu onaylı isabet geri bildirimi. Turks kapüşonları da faction rengine boyanır. Ayrıntılar ve kontroller: [HERO_FEEL.md](HERO_FEEL.md).
