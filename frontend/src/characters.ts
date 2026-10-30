@@ -166,7 +166,9 @@ export class Characters {
               bool coloredCloth = (diffuseColor.g > diffuseColor.r*1.2 && diffuseColor.g > diffuseColor.b*1.2) ||
                 (diffuseColor.b > diffuseColor.r*1.25 && diffuseColor.b > diffuseColor.g*1.08) ||
                 (diffuseColor.r > diffuseColor.g*2.4 && diffuseColor.r > diffuseColor.b*2.5);
-              if((vPaint.a > 1.5 && vPaint.a < 2.5) || (vPaint.a > 2.5 && coloredCloth)) diffuseColor.rgb = vColor * (.45 + dot(diffuseColor.rgb, vec3(.3,.59,.11)) * .65);
+              // Hood and skin share the source Head mesh. Recolor its green texels only.
+              bool greenHood = vPaint.a < .5 && diffuseColor.g > diffuseColor.r*1.2 && diffuseColor.g > diffuseColor.b*1.2;
+              if((vPaint.a > 1.5 && vPaint.a < 2.5) || (vPaint.a > 2.5 && coloredCloth) || greenHood) diffuseColor.rgb = vColor * (.55 + dot(diffuseColor.rgb, vec3(.3,.59,.11)) * .65);
             #endif
             diffuseColor.rgb = mix(diffuseColor.rgb,vec3(1.0,.75,.38),vHit*.45);
           `,
