@@ -31,7 +31,9 @@ Birlik teması gerçek asker gövdelerinden hesaplanır: yalnız menzil/açı/en
 
 Saldırı hazırlık/temas zamanlaması tamamlandı. Yakın dövüş hasarı hazırlık sonrası yeniden doğrulanan temasta; birlik ve Akıncı hero atışları mesafeye bağlı uçuş sonunda çözülür. Kaçan hedef, engel, hazırlık sırasında ölüm/geri çekilme ve varış anındaki dodge test edildi. Klipler bitmeden yeniden başlatılmaz; 20 Hz isabetler 10 Hz görüntü paketinde biriktirilir. Oklar tek instanced çizimde, yaylım başına en fazla üç temsili okla gösterilir; gerçek hasar her katılımcı asker için ayrı hesaplanır. Izgara yalnız dolu hücreleri temizler ve temas sorgusu dost hücreleri atlar.
 
-İlk savaş paketinin oynanabilir yerel sürümü `start-combat.cmd` ile 8790 portundadır. 400/800 askerlik önce/sonra sunucu ölçümleri, dalgalanan tarayıcı FPS sonuçları, ek çizim profili ve tekrar çalıştırma adımları: [COMBAT_VALIDATION.md](COMBAT_VALIDATION.md). İşlev testleri geçti; kontrollü tek oyun penceresinde FPS doğrulaması hâlâ gereklidir.
+İlk savaş paketinin oynanabilir yerel sürümü `start-combat.cmd` ile 8790 portundadır. 400/800 askerlik önce/sonra sunucu ölçümleri ve ilk tarayıcı profili: [COMBAT_VALIDATION.md](COMBAT_VALIDATION.md).
+
+FPS paketi `start-performance.cmd` ile 8792 portundadır. Kamera dışı actor çizimi, uzak binek geometrisi, instance kapasitesi/renk tamponları, etiket layout'u ve hero HUD yenilemeleri iyileştirildi. Sabit hareket ve saldırı tekrarıyla A-B-B-A / B-A-A-B ölçümleri, GPU sorguları ve işlev testleri tamamlandı. Ortalama FPS yükseldi; 800 askerli hero kare p95 değeri yaklaşık 33 ms kaldı. Kullanıcının diğer uygulamaları kapatılmadığından cihaz/GPU tamamen izole değildi. [Ham örnekler ve sınırlar](RENDER_VALIDATION.md).
 
 Dizilim tutarlılığı düzeltildi: Viking/Arab çemberleri bütün yönlerde sırasıyla %18/%14 savunma sağlar. Hero vuruşları da aynı dizilim ve zırh hesabından geçer; botlar oyuncularla aynı 1,4 saniyelik yeniden dizilme cezasını kullanır. 12 dizilimin üç yönü, hero çember teması ve bot geçişi test edildi; tüm Go testleri, vet ve frontend üretim derlemesi geçti.
 
@@ -45,7 +47,7 @@ Hero kontrol geçişi tamamlandı: kamera yönüne göre A/D düzeltmesi, ok tu�
 |---|---|---|---|
 | 1 | CI etkinleştirme | Workflow yetkisi sağlanır; frontend build, Go race/vet ve dört istemci testi Linux'ta geçer | `ci: enable verified multiplayer checks` |
 | 2 | Dört insanla bağlantı denemesi | Ayrı cihazlarda oda, dolu oda reddi, kopma, tekrar bağlanma ve maç sonu gözlemlenir; RTT ve hata kaydı tutulur | `test(net)` ve bulunan hatalara ayrı `fix(net)` |
-| 3 | Kontrollü FPS ve ağ ölçümü | Yerel 400/800 asker tick karşılaştırması tamamlandı; yalnız oyun açıkken kare süresi tekrarlanır ve ağ trafiği ölçülür | `perf(render)` veya `perf(server)`; önce/sonra ölçümü |
+| 3 | Ayrı cihazda uzun performans testi | Sabit 400/800 asker karşılaştırması tamamlandı; yalnız oyun açıkken uzun gerçek maçta kare süreleri ve ağ trafiği ölçülür | `perf(render)` veya `perf(server)`; ölçümle bulunan darboğaza göre |
 | 4 | Denge denemeleri | Faction/harita/dizilim eşleşmeleri ve önden/yan/arka saldırılar tekrarlanır; katsayı değişikliği kanıtıyla açıklanır | `balance(rules)` ve ilgili kural testleri |
 | 5 | Görsellerin sonraki geçişi | Faction başına ayrı model/siluetler, daha doğal binekler ve yakın savaş temasları; mevcut hareketlerin kullanıcı testiyle değerlendirilmesi | `assets(characters)` veya `feat(client)` |
 | 6 | İnternete dağıtım | Kalıcı Go servisi HTTPS/WSS ile açılır; Vercel frontend bağlanır; dört ayrı cihazın aynı maçı oynadığı doğrulanır | `deploy` ayarları ve doğrulama kaydı |

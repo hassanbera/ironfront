@@ -4,17 +4,33 @@ Ekonomisiz, dört oyunculu, 3D RTS / üçüncü şahıs savaş oyununun ilk oyna
 
 ## Hemen oyna — Windows
 
-Güncel hazır pakette `start-combat.cmd` dosyasına çift tıkla. Oyun `http://localhost:8790` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır. `start-game.cmd`, ilk paketi 8787 portunda açar.
+Güncel hazır pakette `start-performance.cmd` dosyasına çift tıkla. Oyun `http://localhost:8792` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır. Önceki savaş paketi `start-combat.cmd` ile 8790, ilk paket `start-game.cmd` ile 8787 portundadır.
 
-GitHub reposu kaynak kod içerir; `.exe`, `node_modules`, `frontend/dist` ve `frontend/dist-combat` repoya eklenmez. Repoyu klonladıysan aşağıdaki kaynaktan çalıştırma adımlarını kullan. Önceki hazır Windows ZIP paketi bu güncellemeyi içermez; henüz GitHub Release yayımlanmadı.
+GitHub reposu kaynak kod içerir; `.exe`, `node_modules` ve derlenmiş frontend dizinleri repoya eklenmez. Repoyu klonladıysan aşağıdaki kaynaktan çalıştırma adımlarını kullan. Önceki hazır Windows ZIP paketi bu güncellemeyi içermez; henüz GitHub Release yayımlanmadı.
 
 - **Meydana çık:** 3 botla antrenman.
 - **Birlik Talimi:** ayrı sekmede kılıç, mızrak, yay ve baltaları yakından incele; koşu, saldırı, blok, darbe, kaçınma ve düşme hareketlerini seç. 400 asker görünümü de vardır.
 - **Oda oluştur:** oda kodunu arkadaşlarına gönder; her biri farklı faction seçip aynı sunucuda **Odaya katıl** üzerinden girer.
 - Oda sahibi boş slotları botlarla doldurabilir veya 2–4 gerçek oyuncuyla başlayabilir.
-- Aynı bilgisayarda ayrı tarayıcı sekmeleriyle dört oyuncu denenebilir. Aynı ağdaki arkadaşlar, sunucuyu çalıştıran bilgisayarın yerel IP adresi ve seçilen paketin portunu kullanır (`start-combat.cmd`: `8790`). İşletim sisteminin mevcut ağ izinleri geçerlidir; paket güvenlik duvarını değiştirmez.
+- Aynı bilgisayarda ayrı tarayıcı sekmeleriyle dört oyuncu denenebilir. Aynı ağdaki arkadaşlar, sunucuyu çalıştıran bilgisayarın yerel IP adresi ve seçilen paketin portunu kullanır (`start-performance.cmd`: `8792`). İşletim sisteminin mevcut ağ izinleri geçerlidir; paket güvenlik duvarını değiştirmez.
 
 Oyun klavye ve fare içindir. Dar ekran menüsü uyarlanır, dokunmatik savaş kontrolü yoktur.
+
+### FPS ve çizim paketi
+
+`start-performance.cmd` → **http://localhost:8792**. Kamera dışı asker çizimi, uzak binek geometrisi, dinamik renk tamponları, dünya etiketleri ve hero HUD güncellemeleri iyileştirildi. Yakındaki karakterler ve savaş kuralları korunur. Intel UHD'de son kontrollü tekrarın ortalama FPS değerleri: hero 400 asker 55,9→73,4; hero 800 asker 41,7→51,1; RTS 800 asker 47,8→55,9. Ağır hero sahnesinde kare p95 hâlâ yaklaşık 33 ms; sabit 60 FPS garantisi değildir. [Bütün örnekler, testler ve sınırlar](docs/RENDER_VALIDATION.md).
+
+Kaynak koddan bu ayrı yerel paketi hazırlamak için:
+
+```sh
+cd frontend
+npm ci
+npm run build -- --outDir dist-performance
+cd ../server
+go build -o ../ironfront-server-performance.exe .
+```
+
+Ardından proje kökündeki `start-performance.cmd` çalıştırılır. Eski 8790 paketi karşılaştırma için korunur.
 
 ### Temas ve saldırı zamanlaması paketi
 

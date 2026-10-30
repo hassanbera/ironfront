@@ -1,6 +1,7 @@
 node_modules/
 frontend/dist/
 frontend/dist-combat/
+frontend/dist-performance/
 *.exe
 .env*
 .vercel/
