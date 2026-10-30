@@ -1,0 +1,371 @@
+import * as T from "three";
+
+type Clip = { start: number; frames: number; duration: number };
+type Field = { offset: number; length: number; size: number };
+type Metadata = {
+  bones: number;
+  frames: number;
+  height: number;
+  animations: Record<string, Clip>;
+  geometries: Record<string, Record<string, Field>>;
+};
+type Batch = {
+  mesh: T.InstancedMesh;
+  pose: T.InstancedBufferAttribute;
+  count: number;
+};
+type Model = {
+  meta: Metadata;
+  batches: Map<string, Batch>;
+  material: T.MeshStandardMaterial;
+  depth: T.MeshDepthMaterial;
+  texture: T.DataTexture;
+  atlas: T.Texture;
+  scale: number;
+};
+type Blend = {
+  motion: string;
+  previous: number;
+  frame: number;
+  at: number;
+  seen: number;
+};
+export type Character = {
+  id: string;
+  model: string;
+  weapon: string;
+  x: number;
+  y: number;
+  z: number;
+  facing: number;
+  color: T.Color;
+  motion: string;
+  phase: number;
+  loop: boolean;
+  size?: number;
+  hit?: number;
+  lean?: number;
+};
+const matrix = new T.Object3D();
+const CAPACITY = 1100;
+
+/** Shared GPU pose atlas: three animated bodies, independent equipment and one instance per soldier.
+ * The CPU samples one scalar pose per actor; it never updates hundreds of skeletons/mixers.
+ */
+export class Characters {
+  group = new T.Group();
+  ready = false;
+  count = 0;
+  private models = new Map<string, Model>();
+  private blends = new Map<string, Blend>();
+  private now = 0;
+  private disposed = false;
+  private eye = new T.Vector3();
+
+  async load() {
+    await Promise.all(
+      ["knight", "viking", "ranger"].map(async (name) => {
+        const prefix = `/assets/characters/${name}`;
+        const get = async (url: string) => {
+          const response = await fetch(url);
+          if (!response.ok)
+            throw new Error(`Character asset ${response.status}: ${url}`);
+          return response;
+        };
+        const [meta, data, poses, atlas] = await Promise.all([
+          get(prefix + ".json").then((r) => r.json()) as Promise<Metadata>,
+          get(prefix + "-mesh.bin").then((r) => r.arrayBuffer()),
+          get(prefix + "-poses.bin").then((r) => r.arrayBuffer()),
+          new T.TextureLoader().loadAsync(prefix + ".png"),
+        ]);
+        atlas.colorSpace = T.SRGBColorSpace;
+        atlas.flipY = false;
+        const texture = new T.DataTexture(
+          new Uint16Array(poses),
+          meta.bones * 4,
+          meta.frames,
+          T.RGBAFormat,
+          T.HalfFloatType,
+        );
+        texture.minFilter = texture.magFilter = T.LinearFilter;
+        texture.generateMipmaps = false;
+        texture.needsUpdate = true;
+        const material = new T.MeshStandardMaterial({
+          map: atlas,
+          roughness: 0.72,
+          metalness: 0.12,
+        });
+        const depth = new T.MeshDepthMaterial({
+          depthPacking: T.RGBADepthPacking,
+        });
+        const inject = (
+          shader: Parameters<T.Material["onBeforeCompile"]>[0],
+          surface: boolean,
+        ) => {
+          shader.uniforms.poseAtlas = { value: texture };
+          shader.uniforms.poseSize = {
+            value: new T.Vector2(meta.bones * 4, meta.frames),
+          };
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <common>",
+            `#include <common>
+          uniform sampler2D poseAtlas;
+          uniform vec2 poseSize;
+          attribute vec4 skinIndex;
+          attribute vec4 skinWeight;
+          attribute vec4 pose;
+          attribute vec4 paint;
+          varying vec4 vPaint;
+          varying float vHit;
+          mat4 poseBone(float joint, float frame) {
+            float x = joint * 4.0;
+            float y = (frame + 0.5) / poseSize.y;
+            return mat4(texture2D(poseAtlas,vec2((x+.5)/poseSize.x,y)),
+              texture2D(poseAtlas,vec2((x+1.5)/poseSize.x,y)),
+              texture2D(poseAtlas,vec2((x+2.5)/poseSize.x,y)),
+              texture2D(poseAtlas,vec2((x+3.5)/poseSize.x,y)));
+          }
+          mat4 poseSkin(float frame) {
+            mat4 m = poseBone(skinIndex.x,frame) * skinWeight.x;
+            if(skinWeight.y > 0.001) m += poseBone(skinIndex.y,frame) * skinWeight.y;
+            if(skinWeight.z > 0.001) m += poseBone(skinIndex.z,frame) * skinWeight.z;
+            if(skinWeight.w > 0.001) m += poseBone(skinIndex.w,frame) * skinWeight.w;
+            return m;
+          }
+        `,
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            "void main() {",
+            `void main() {
+          mat4 actorSkin = poseSkin(pose.x);
+          if(pose.z < .999) actorSkin = actorSkin * pose.z + poseSkin(pose.y) * (1.0-pose.z);
+          vPaint = paint;
+          vHit = pose.w;
+        `,
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <beginnormal_vertex>",
+            `#include <beginnormal_vertex>
+          objectNormal = mat3(actorSkin) * objectNormal;
+        `,
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <begin_vertex>",
+            "vec3 transformed = (actorSkin * vec4(position,1.0)).xyz;",
+          );
+          if (surface) {
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <common>",
+              "#include <common>\nvarying vec4 vPaint;\nvarying float vHit;",
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <color_fragment>",
+              `
+            if(vPaint.a > .5 && vPaint.a < 1.5) diffuseColor.rgb = vPaint.rgb;
+            #ifdef USE_COLOR
+              bool coloredCloth = (diffuseColor.g > diffuseColor.r*1.2 && diffuseColor.g > diffuseColor.b*1.2) ||
+                (diffuseColor.b > diffuseColor.r*1.25 && diffuseColor.b > diffuseColor.g*1.08) ||
+                (diffuseColor.r > diffuseColor.g*2.4 && diffuseColor.r > diffuseColor.b*2.5);
+              if((vPaint.a > 1.5 && vPaint.a < 2.5) || (vPaint.a > 2.5 && coloredCloth)) diffuseColor.rgb = vColor * (.45 + dot(diffuseColor.rgb, vec3(.3,.59,.11)) * .65);
+            #endif
+            diffuseColor.rgb = mix(diffuseColor.rgb,vec3(1.0,.75,.38),vHit*.45);
+          `,
+            );
+          }
+        };
+        material.onBeforeCompile = (s) => inject(s, true);
+        depth.onBeforeCompile = (s) => inject(s, false);
+        material.customProgramCacheKey = () => "ironfront-rigged-surface-v1";
+        depth.customProgramCacheKey = () => "ironfront-rigged-shadow-v1";
+        const model: Model = {
+          meta,
+          batches: new Map(),
+          material,
+          depth,
+          texture,
+          atlas,
+          scale: 2.15 / meta.height,
+        };
+        for (const [kind, fields] of Object.entries(meta.geometries)) {
+          const geo = new T.BufferGeometry();
+          for (const [attr, field] of Object.entries(fields)) {
+            if (attr === "index")
+              geo.setIndex(
+                new T.BufferAttribute(
+                  new Uint32Array(
+                    new Float32Array(data, field.offset, field.length),
+                  ),
+                  1,
+                ),
+              );
+            else
+              geo.setAttribute(
+                attr,
+                new T.BufferAttribute(
+                  new Float32Array(data, field.offset, field.length),
+                  field.size,
+                ),
+              );
+          }
+          const pose = new T.InstancedBufferAttribute(
+            new Float32Array(CAPACITY * 4),
+            4,
+          ).setUsage(T.DynamicDrawUsage);
+          geo.setAttribute("pose", pose);
+          const mesh = new T.InstancedMesh(geo, material, CAPACITY);
+          mesh.name = `soldiers-${name}-${kind}`;
+          mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.customDepthMaterial = depth;
+          mesh.frustumCulled = false;
+          mesh.count = 0;
+          model.batches.set(kind, { mesh, pose, count: 0 });
+          this.group.add(mesh);
+        }
+        this.models.set(name, model);
+      }),
+    );
+    if (this.disposed) {
+      this.dispose();
+      return;
+    }
+    this.ready = true;
+  }
+
+  begin(time: number, eye?: T.Vector3) {
+    this.now = time;
+    if (eye) this.eye.copy(eye);
+    this.count = 0;
+    for (const model of this.models.values())
+      for (const batch of model.batches.values()) batch.count = 0;
+  }
+
+  duration(model: string, motion: string) {
+    return this.models.get(model)?.meta.animations[motion]?.duration || 1;
+  }
+
+  draw(actor: Character) {
+    const model = this.models.get(actor.model);
+    if (!model) return;
+    const clip =
+      model.meta.animations[actor.motion] || model.meta.animations.idle;
+    const duration = Math.max(clip.duration, 1 / 24);
+    const phase = actor.loop
+      ? ((actor.phase % duration) + duration) % duration
+      : T.MathUtils.clamp(actor.phase, 0, duration);
+    const frame = clip.start + (phase / duration) * (clip.frames - 1);
+    let blend = this.blends.get(actor.id);
+    if (!blend) {
+      blend = {
+        motion: actor.motion,
+        previous: frame,
+        frame,
+        at: -10,
+        seen: this.now,
+      };
+      this.blends.set(actor.id, blend);
+    }
+    if (blend.motion !== actor.motion) {
+      blend.previous = blend.frame;
+      blend.motion = actor.motion;
+      blend.at = this.now;
+    }
+    blend.frame = frame;
+    blend.seen = this.now;
+    const mix = T.MathUtils.clamp((this.now - blend.at) / 0.12, 0, 1);
+    matrix.position.set(actor.x, actor.y, actor.z);
+    matrix.rotation.set(actor.lean || 0, actor.facing, 0, "YXZ");
+    const scale = model.scale * (actor.size || 1);
+    matrix.scale.set(scale * 0.92, scale * 1.16, scale * 0.95);
+    matrix.updateMatrix();
+    const distance =
+      (actor.x - this.eye.x) ** 2 +
+      (actor.y - this.eye.y) ** 2 +
+      (actor.z - this.eye.z) ** 2;
+    const detail =
+      distance > 2025 ? "bodyFar" : distance > 625 ? "bodyMid" : "body";
+    for (const kind of [detail, actor.weapon]) {
+      const batch =
+        model.batches.get(kind) ||
+        (kind.startsWith("body") ? model.batches.get("body") : undefined);
+      if (!batch || batch.count >= CAPACITY) continue;
+      const i = batch.count++;
+      batch.mesh.setMatrixAt(i, matrix.matrix);
+      batch.mesh.setColorAt(i, actor.color);
+      batch.pose.setXYZW(i, frame, blend.previous, mix, actor.hit || 0);
+    }
+    this.count++;
+  }
+
+  end() {
+    for (const model of this.models.values())
+      for (const batch of model.batches.values()) {
+        batch.mesh.count = batch.count;
+        if (!batch.count) continue;
+        batch.mesh.instanceMatrix.needsUpdate = true;
+        if (batch.mesh.instanceColor)
+          batch.mesh.instanceColor.needsUpdate = true;
+        batch.pose.needsUpdate = true;
+      }
+    for (const [id, blend] of this.blends)
+      if (this.now - blend.seen > 8) this.blends.delete(id);
+  }
+
+  dispose() {
+    this.disposed = true;
+    for (const model of this.models.values()) {
+      for (const batch of model.batches.values()) {
+        batch.mesh.geometry.dispose();
+        batch.mesh.dispose();
+      }
+      model.material.dispose();
+      model.depth.dispose();
+      model.texture.dispose();
+      model.atlas.dispose();
+    }
+    this.models.clear();
+    this.blends.clear();
+    this.group.clear();
+  }
+}
+
+export function outfit(owner: number, kind: string, heroClass = -1) {
+  const ranged = kind === "archer" || kind === "horseArcher" || heroClass === 2;
+  return {
+    model:
+      kind === "axe" || kind === "berserker"
+        ? "viking"
+        : ranged
+          ? owner === 1
+            ? "viking"
+            : "ranger"
+          : owner === 0
+            ? "knight"
+            : owner === 1
+              ? "viking"
+              : "ranger",
+    weapon: ranged
+      ? "bow"
+      : kind === "berserker"
+        ? "dual"
+        : kind === "axe"
+          ? "axe"
+          : kind === "javelin"
+            ? "javelin"
+            : ["spear", "lancer", "camel"].includes(kind)
+              ? "spear"
+              : "sword",
+    attack: ranged
+      ? "shoot"
+      : kind === "berserker"
+        ? "dual"
+        : kind === "axe"
+          ? "chop"
+          : kind === "javelin"
+            ? "throw"
+            : ["spear", "lancer", "camel"].includes(kind)
+              ? "stab"
+              : "slash",
+  };
+}

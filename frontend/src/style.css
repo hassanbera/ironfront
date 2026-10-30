@@ -1107,8 +1107,8 @@ body.menu #viewport:after {
 .hero-hud {
   position: absolute;
   bottom: 25px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 24px;
+  transform: none;
   width: 380px;
   background: var(--panel);
   border: 1px solid var(--line);

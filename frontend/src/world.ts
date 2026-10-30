@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { Characters, outfit } from "./characters";
 import {
   rules,
   clamp,
@@ -135,6 +136,20 @@ export class World {
   private shots = new Map<number, number>();
   private audio: AudioContext | null = null;
   private quality = "high";
+  private characters = new Characters();
+  private snapshotAt = 0;
+  private hits = new Map<number, number>();
+  private fallen: Array<{
+    id: string;
+    x: number;
+    z: number;
+    facing: number;
+    owner: number;
+    kind: string;
+    at: number;
+    hero: boolean;
+  }> = [];
+  private deathID = 0;
   constructor(host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -170,6 +185,19 @@ export class World {
     sun.shadow.normalBias = 0.45;
     this.scene.add(sun);
     this.scene.add(this.root, this.actors, this.effects);
+    this.scene.add(this.characters.group);
+    this.characters
+      .load()
+      .then(() => {
+        this.canvas.dataset.characters = "rigged";
+      })
+      .catch((error) => {
+        this.canvas.dataset.characters = "fallback";
+        console.warn(
+          "Karakter modelleri yüklenemedi; temel modeller kullanılacak.",
+          error,
+        );
+      });
     this.labels = document.createElement("div");
     this.labels.className = "world-labels";
     host.append(this.labels);
@@ -248,6 +276,13 @@ export class World {
       cape: new THREE.BoxGeometry(0.6, 0.82, 0.08),
       bow: new THREE.TorusGeometry(0.43, 0.045, 4, 8, Math.PI * 1.5),
       ring: new THREE.RingGeometry(0.47, 0.56, 16),
+      horseBody: new THREE.SphereGeometry(1, 10, 7),
+      horseLimb: new THREE.CapsuleGeometry(0.095, 0.42, 3, 6),
+      horseNeck: new THREE.CapsuleGeometry(0.21, 0.55, 3, 7),
+      horseHead: new THREE.SphereGeometry(1, 8, 6),
+      horseEar: new THREE.ConeGeometry(0.09, 0.28, 5),
+      horseHoof: new THREE.BoxGeometry(0.19, 0.16, 0.27),
+      saddle: new THREE.BoxGeometry(0.75, 0.13, 0.7),
     };
     for (const [name, geo] of Object.entries(defs)) {
       const mesh = new THREE.InstancedMesh(
@@ -670,7 +705,62 @@ export class World {
     this.root.add(group);
   }
   update(state: GameState, owner: number) {
+    const previous = this.state;
+    if (!previous || previous.room !== state.room || state.phase === "lobby") {
+      this.fallen.length = 0;
+      this.hits.clear();
+      this.shots.clear();
+    } else {
+      for (const squad of state.squads) {
+        const old = previous.squads.find((s) => s.id === squad.id);
+        if (!old) continue;
+        if (squad.hp < old.hp) this.hits.set(squad.id, this.time);
+        if (squad.alive < old.alive) {
+          const shape =
+            rules.factions[old.owner].formations[old.formation].shape;
+          const smooth = this.smooth.get(old.id) || old;
+          for (let i = squad.alive; i < old.alive; i++) {
+            const [ox, oz] = offset(shape, i);
+            this.fallen.push({
+              id: `fallen-${this.deathID++}`,
+              x:
+                smooth.x +
+                ox * Math.cos(smooth.facing) +
+                oz * Math.sin(smooth.facing),
+              z:
+                smooth.z -
+                ox * Math.sin(smooth.facing) +
+                oz * Math.cos(smooth.facing),
+              facing: smooth.facing,
+              owner: old.owner,
+              kind: rules.factions[old.owner].units[old.class].kind,
+              at: this.time + (i % 4) * 0.035,
+              hero: false,
+            });
+          }
+        }
+      }
+      for (const hero of state.heroes) {
+        const old = previous.heroes.find((h) => h.owner === hero.owner);
+        if (old && hero.hp < old.hp)
+          this.hits.set(10000 + hero.owner, this.time);
+        if (old && old.hp > 0 && hero.hp <= 0)
+          this.fallen.push({
+            id: `fallen-${this.deathID++}`,
+            x: old.x,
+            z: old.z,
+            facing: old.facing,
+            owner: old.owner,
+            kind: old.class === 2 ? "archer" : "sword",
+            at: this.time,
+            hero: true,
+          });
+      }
+      if (this.fallen.length > 96)
+        this.fallen.splice(0, this.fallen.length - 96);
+    }
     this.state = state;
+    this.snapshotAt = this.time;
     this.owner = owner;
     this.preview = state.phase === "lobby";
     if (state.map !== this.mapID) this.buildMap(state.map);
@@ -893,10 +983,149 @@ export class World {
       }
     }
   }
+  private drawMount(
+    x: number,
+    z: number,
+    facing: number,
+    owner: number,
+    camel: boolean,
+    moving: boolean,
+    index: number,
+  ) {
+    const base = heightAt(this.mapID, x, z),
+      sin = Math.sin(facing),
+      cos = Math.cos(facing);
+    const coat = color.set(
+      camel
+        ? "#b49a72"
+        : ["#574334", "#8a6650", "#42403b", "#a08d75"][index % 4],
+    );
+    const stride = moving
+      ? this.time * 11 + index * 0.8
+      : this.time * 1.4 + index;
+    const bob = moving ? Math.cos(stride * 2) * 0.055 : 0;
+    const p = (
+      name: string,
+      dx: number,
+      dy: number,
+      dz: number,
+      sx: number,
+      sy: number,
+      sz: number,
+      rx = 0,
+      c = coat,
+    ) =>
+      this.put(
+        name,
+        x + dx * cos + dz * sin,
+        base + dy + bob,
+        z - dx * sin + dz * cos,
+        sx,
+        sy,
+        sz,
+        rx,
+        facing,
+        0,
+        c,
+      );
+    p("horseBody", 0, 1.17, 0, 0.43, 0.45, 0.95);
+    p("horseBody", 0, 1.1, -0.6, 0.44, 0.42, 0.43);
+    p(
+      "horseNeck",
+      0,
+      camel ? 1.78 : 1.65,
+      0.7,
+      camel ? 0.8 : 1,
+      camel ? 1.45 : 1,
+      1,
+      -0.35,
+    );
+    p(
+      "horseHead",
+      0,
+      camel ? 2.35 : 2.05,
+      camel ? 1.06 : 0.96,
+      0.19,
+      0.24,
+      0.43,
+      -0.2,
+    );
+    p(
+      "horseHead",
+      0,
+      camel ? 2.23 : 1.93,
+      camel ? 1.38 : 1.3,
+      0.16,
+      0.14,
+      0.24,
+      -0.18,
+    );
+    p("horseEar", -0.14, camel ? 2.59 : 2.34, 0.88, 1, 1, 1, 0.15);
+    p("horseEar", 0.14, camel ? 2.59 : 2.34, 0.88, 1, 1, 1, 0.15);
+    if (camel) p("horseBody", 0, 1.62, -0.18, 0.28, 0.34, 0.38);
+    else p("cape", 0, 1.9, 0.56, 0.22, 0.74, 1.2, -0.35, dark);
+    p("saddle", 0, 1.56, -0.08, 1.12, 1, 1.3, 0, factionColors[owner]);
+    p("saddle", 0, 1.68, -0.08, 0.72, 1, 0.75, 0, brown);
+    p(
+      "horseNeck",
+      0,
+      0.98,
+      -0.96,
+      0.22,
+      0.85,
+      0.35,
+      -0.6 + Math.sin(stride) * 0.1,
+      dark,
+    );
+    for (let j = 0; j < 4; j++) {
+      const side = j % 2 ? 1 : -1,
+        front = j < 2 ? 1 : -1;
+      const phase = stride + (j === 0 || j === 3 ? 0 : Math.PI);
+      const swing = moving ? Math.sin(phase) * 0.55 : 0;
+      const knee = moving ? Math.max(0, Math.cos(phase)) * 0.5 : 0.08;
+      const dx = side * 0.3,
+        hipZ = front * 0.61;
+      p(
+        "horseLimb",
+        dx,
+        0.78,
+        hipZ + Math.sin(swing) * 0.18,
+        1.25,
+        0.95,
+        1.15,
+        swing,
+      );
+      p(
+        "horseLimb",
+        dx,
+        0.36 + knee * 0.15,
+        hipZ + Math.sin(swing) * 0.39,
+        0.75,
+        0.85,
+        0.8,
+        -swing * 0.6 - knee,
+      );
+      p(
+        "horseHoof",
+        dx,
+        0.1 + knee * 0.3,
+        hipZ + Math.sin(swing) * 0.48,
+        1,
+        1,
+        1,
+        -0.1,
+        dark,
+      );
+    }
+  }
   private drawArmy(dt: number) {
     const state = this.state;
     if (!state) return;
     for (const p of Object.values(this.parts)) p.count = 0;
+    this.characters.begin(this.time, this.camera.position);
+    const serverTime =
+      state.time +
+      (this.preview ? 0 : Math.min(0.15, this.time - this.snapshotAt));
     const ease = 1 - Math.exp(-dt * 16);
     for (const s of state.squads) {
       if (s.alive <= 0) continue;
@@ -920,16 +1149,75 @@ export class World {
         const [ox, oz] = offset(shape, i);
         const x = v.x + ox * Math.cos(v.facing) + oz * Math.sin(v.facing),
           z = v.z - ox * Math.sin(v.facing) + oz * Math.cos(v.facing);
-        this.soldier(
-          x,
-          z,
-          v.facing,
-          s.owner,
-          spec.kind,
-          i,
-          moving,
-          state.time - s.attackAt < 0.25,
-        );
+        if (this.characters.ready) {
+          const gear = outfit(s.owner, spec.kind);
+          const mounted = isMounted(spec.kind);
+          const attackAge = serverTime - s.attackAt - (i % 5) * 0.045;
+          const hitAge =
+            this.time - (this.hits.get(s.id) ?? -10) - (i % 4) * 0.03;
+          const attacking =
+            s.attackAt > 0 && attackAge >= 0 && attackAge < 0.82;
+          const motion = attacking
+            ? mounted
+              ? "ride_" + gear.attack
+              : gear.attack
+            : hitAge >= 0 && hitAge < 0.22 && i % 3 === 0
+              ? "hit"
+              : mounted
+                ? "ride"
+                : moving
+                  ? "run"
+                  : s.engaged && ["spear", "sword"].includes(spec.kind)
+                    ? "block"
+                    : "idle";
+          const phase = attacking
+            ? (attackAge / 0.82) * this.characters.duration(gear.model, motion)
+            : motion === "hit"
+              ? hitAge * 2.5
+              : this.time * (moving ? 0.95 : 1) + i * 0.173;
+          const lunge =
+            attacking && !isRanged(spec.kind) && !mounted
+              ? Math.sin((attackAge / 0.82) * Math.PI) * 0.28
+              : 0;
+          const ground = heightAt(this.mapID, x, z);
+          if (mounted)
+            this.drawMount(
+              x,
+              z,
+              v.facing,
+              s.owner,
+              spec.kind === "camel",
+              moving,
+              i,
+            );
+          this.characters.draw({
+            id: `${s.id}:${i}`,
+            ...gear,
+            x: x + Math.sin(v.facing) * lunge,
+            y:
+              ground +
+              (mounted
+                ? 1.1 + (moving ? Math.sin(this.time * 12 + i) * 0.07 : 0)
+                : 0),
+            z: z + Math.cos(v.facing) * lunge,
+            facing: v.facing,
+            color: factionColors[s.owner],
+            motion,
+            phase,
+            loop: !attacking && motion !== "hit",
+            hit: hitAge >= 0 && hitAge < 0.16 ? 1 - hitAge / 0.16 : 0,
+          });
+        } else
+          this.soldier(
+            x,
+            z,
+            v.facing,
+            s.owner,
+            spec.kind,
+            i,
+            moving,
+            state.time - s.attackAt < 0.25,
+          );
         if (this.selected.has(s.id))
           this.put(
             "ring",
@@ -958,19 +1246,64 @@ export class World {
       v.x += (h.x - v.x) * ease;
       v.z += (h.z - v.z) * ease;
       v.facing = h.facing;
-      this.soldier(
-        v.x,
-        v.z,
-        h.facing,
-        h.owner,
-        h.class === 2 ? "archer" : "sword",
-        1,
-        moving,
-        state.time - h.attackAt < 0.3,
-        true,
-        h.block,
-        h.y,
-      );
+      if (this.characters.ready) {
+        const kind = h.class === 2 ? "archer" : "sword",
+          gear = outfit(h.owner, kind, h.class);
+        const attackAge = serverTime - h.attackAt;
+        const hitAge = this.time - (this.hits.get(id) ?? -10);
+        const dodging = h.dodgeUntil > serverTime;
+        const attacking = h.attackAt > 0 && attackAge >= 0 && attackAge < 0.55;
+        const motion = dodging
+          ? "dodge"
+          : h.y > 0.1
+            ? "jump"
+            : h.block
+              ? hitAge < 0.24
+                ? "blockHit"
+                : "block"
+              : attacking
+                ? gear.attack
+                : hitAge < 0.24
+                  ? "hit"
+                  : moving
+                    ? "run"
+                    : "idle";
+        const phase = dodging
+          ? (1 - (h.dodgeUntil - serverTime) / 0.3) *
+            this.characters.duration(gear.model, "dodge")
+          : attacking
+            ? (attackAge / 0.55) * this.characters.duration(gear.model, motion)
+            : ["hit", "blockHit"].includes(motion)
+              ? hitAge * 2
+              : this.time * 1.1;
+        this.characters.draw({
+          id: `hero:${h.owner}`,
+          ...gear,
+          x: v.x,
+          y: heightAt(this.mapID, v.x, v.z) + h.y,
+          z: v.z,
+          facing: h.facing,
+          color: factionColors[h.owner],
+          size: 1.16,
+          motion,
+          phase,
+          loop: !dodging && !attacking && !["hit", "blockHit"].includes(motion),
+          hit: hitAge < 0.15 ? 1 - hitAge / 0.15 : 0,
+        });
+      } else
+        this.soldier(
+          v.x,
+          v.z,
+          h.facing,
+          h.owner,
+          h.class === 2 ? "archer" : "sword",
+          1,
+          moving,
+          state.time - h.attackAt < 0.3,
+          true,
+          h.block,
+          h.y,
+        );
       this.put(
         "ring",
         v.x,
@@ -985,6 +1318,27 @@ export class World {
         gold,
       );
     }
+    if (this.characters.ready) {
+      this.fallen = this.fallen.filter((f) => this.time - f.at < 4.5);
+      for (const f of this.fallen) {
+        const age = Math.max(0, this.time - f.at),
+          gear = outfit(f.owner, f.kind);
+        this.characters.draw({
+          id: f.id,
+          ...gear,
+          x: f.x,
+          z: f.z,
+          y: heightAt(this.mapID, f.x, f.z) - Math.max(0, age - 3.2) * 0.5,
+          facing: f.facing,
+          color: factionColors[f.owner],
+          size: f.hero ? 1.16 : 1,
+          motion: "death",
+          phase: age * 1.3,
+          loop: false,
+        });
+      }
+    }
+    this.characters.end();
     for (const p of Object.values(this.parts)) {
       p.mesh.count = p.count;
       p.mesh.instanceMatrix.needsUpdate = true;
@@ -1069,16 +1423,16 @@ export class World {
       if (h) {
         const p = this.smooth.get(10000 + h.owner) ?? h;
         const yaw = this.heroYaw;
-        const dist = 10;
+        const dist = 7.5;
         const look = new THREE.Vector3(
           p.x,
-          heightAt(this.mapID, p.x, p.z) + 2.4 + h.y,
+          heightAt(this.mapID, p.x, p.z) + 1.9 + h.y,
           p.z,
         );
         const goal = new THREE.Vector3(
-          p.x - Math.sin(yaw) * dist,
-          look.y + 3.2 + this.heroPitch * 8,
-          p.z - Math.cos(yaw) * dist,
+          p.x - Math.sin(yaw) * dist + Math.cos(yaw) * 1.05,
+          look.y + 2.2 + this.heroPitch * 6,
+          p.z - Math.cos(yaw) * dist - Math.sin(yaw) * 1.05,
         );
         const direction = goal.clone().sub(look).normalize();
         let boom = look.distanceTo(goal);
@@ -1100,7 +1454,7 @@ export class World {
         this.camera.position.lerp(goal, 1 - Math.exp(-dt * 12));
         this.camera.lookAt(
           look.x + Math.sin(yaw) * 4,
-          look.y + 1 - this.heroPitch * 4,
+          look.y - 0.45 - this.heroPitch * 3,
           look.z + Math.cos(yaw) * 4,
         );
         return;
@@ -1139,11 +1493,12 @@ export class World {
   }
   private animate = (now: number) => {
     if (this.disposed) return;
-    const dt = Math.min(0.05, (now - this.last) / 1000);
+    const elapsed = (now - this.last) / 1000;
+    const dt = Math.min(0.05, elapsed);
     this.last = now;
     this.time += dt;
     this.frame++;
-    this.fps = this.fps * 0.97 + (1 / Math.max(dt, 0.001)) * 0.03;
+    this.fps = this.fps * 0.97 + (1 / Math.max(elapsed, 0.001)) * 0.03;
     this.updateCamera(dt);
     this.drawArmy(dt);
     if (this.frame % 3 === 0) this.drawLabels();
@@ -1474,6 +1829,7 @@ export class World {
     cancelAnimationFrame(this.animation);
     window.removeEventListener("resize", this.resize);
     this.renderer.dispose();
+    this.characters.dispose();
     this.audio?.close();
   }
 }
