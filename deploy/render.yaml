@@ -1,0 +1,13 @@
+# Use this path as the Blueprint file in Render. Keep it separate from Vercel's frontend detection.
+services:
+  - type: web
+    name: ironfront-game
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    numInstances: 1
+    healthCheckPath: /health
+    # Room state lives in this process; only deploy tested changes between matches.
+    autoDeployTrigger: "off"

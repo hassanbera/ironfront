@@ -1,0 +1,12 @@
+.git
+work
+docs
+scripts
+deploy
+Dockerfile
+server/*_test.go
+frontend/dist*
+frontend/node_modules
+*.exe
+*.zip
+.env*

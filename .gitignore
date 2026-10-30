@@ -2,8 +2,7 @@ node_modules/
 frontend/dist/
 frontend/dist-combat/
 *.exe
-.env
-.env.local
+.env*
 .vercel/
 .DS_Store
 coverage.out
