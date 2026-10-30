@@ -239,6 +239,10 @@ export class Characters {
           const mesh = new T.InstancedMesh(geo, material, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+          mesh.instanceColor = new T.InstancedBufferAttribute(
+            new Float32Array(CAPACITY * 3),
+            3,
+          ).setUsage(T.DynamicDrawUsage);
           mesh.castShadow = true;
           mesh.receiveShadow = true;
           mesh.customDepthMaterial = depth;

@@ -4,6 +4,7 @@ import { Characters, outfit } from "./characters";
 import { heroMovement, movementClip } from "./hero-controls";
 import { HeroTrack } from "./hero-track";
 import { attackProgress } from "./attack-motion";
+import { ActorVisibility } from "./actor-visibility";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
   rules,
@@ -51,6 +52,13 @@ const steel = new THREE.Color("#b4bdba");
 const brown = new THREE.Color("#574438");
 const dark = new THREE.Color("#303b37");
 const gold = new THREE.Color("#c9b67f");
+const distantMountParts: Record<string, string> = {
+  horseBody: "horseBodyFar",
+  horseLimb: "horseLimbFar",
+  horseNeck: "horseNeckFar",
+  horseHead: "horseHeadFar",
+  horseEar: "horseEarFar",
+};
 
 function random(seed: number) {
   let s = seed;
@@ -166,6 +174,7 @@ export class World {
   private audio: AudioContext | null = null;
   private quality = "high";
   private characters = new Characters();
+  private actorVisibility = new ActorVisibility();
   private snapshotAt = 0;
   private hits = new Map<number, number>();
   private fallen: Array<{
@@ -357,6 +366,12 @@ export class World {
       horseEar: new THREE.ConeGeometry(0.09, 0.28, 5),
       horseHoof: new THREE.BoxGeometry(0.19, 0.16, 0.27),
       saddle: new THREE.BoxGeometry(0.75, 0.13, 0.7),
+      // Same articulated gait at distance; fewer rounded surfaces per horse.
+      horseBodyFar: new THREE.SphereGeometry(1, 6, 4),
+      horseLimbFar: new THREE.BoxGeometry(0.19, 0.61, 0.19),
+      horseNeckFar: new THREE.CapsuleGeometry(0.21, 0.55, 2, 4),
+      horseHeadFar: new THREE.SphereGeometry(1, 6, 4),
+      horseEarFar: new THREE.ConeGeometry(0.09, 0.28, 3),
     };
     for (const [name, geo] of Object.entries(defs)) {
       const mesh = new THREE.InstancedMesh(
@@ -367,9 +382,26 @@ export class World {
           metalness: name === "helmet" || name === "blade" ? 0.3 : 0,
           side: name === "ring" ? THREE.DoubleSide : THREE.FrontSide,
         }),
-        name === "legs" ? 5000 : 1500,
+        name.startsWith("horseLimb")
+          ? 8800
+          : name === "horseHoof"
+            ? 4400
+            : name.startsWith("horseBody")
+              ? 3300
+              : name.startsWith("horseHead") ||
+                  name.startsWith("horseNeck") ||
+                  name.startsWith("horseEar") ||
+                  name === "saddle"
+                ? 2200
+                : name === "legs"
+                  ? 5000
+                  : 1500,
       );
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.instanceColor = new THREE.InstancedBufferAttribute(
+        new Float32Array(mesh.instanceMatrix.count * 3),
+        3,
+      ).setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
       mesh.castShadow = !["ring", "bow"].includes(name);
       mesh.receiveShadow = true;
@@ -1282,6 +1314,11 @@ export class World {
       ? this.time * 11 + index * 0.8
       : this.time * 1.4 + index;
     const bob = moving ? Math.cos(stride * 2) * 0.055 : 0;
+    const far =
+      (x - this.camera.position.x) ** 2 +
+        (base - this.camera.position.y) ** 2 +
+        (z - this.camera.position.z) ** 2 >
+      900;
     const p = (
       name: string,
       dx: number,
@@ -1294,7 +1331,7 @@ export class World {
       c = coat,
     ) =>
       this.put(
-        name,
+        far ? distantMountParts[name] || name : name,
         x + dx * cos + dz * sin,
         base + dy + bob,
         z - dx * sin + dz * cos,
@@ -1461,9 +1498,8 @@ export class World {
       for (let rank = 0; rank < s.alive; rank++) {
         const i = s.slots?.[rank] ?? rank,
           key = s.id * 32 + i;
-        const [ox, oz] = offset(shape, i);
-        let x = v.x + ox * Math.cos(v.facing) + oz * Math.sin(v.facing),
-          z = v.z - ox * Math.sin(v.facing) + oz * Math.cos(v.facing);
+        let x = v.x,
+          z = v.z;
         const body = this.bodies.get(key);
         let actorMoving = moving;
         if (body) {
@@ -1474,12 +1510,18 @@ export class World {
           body.phase += travel * 0.18;
           body.x = x;
           body.z = z;
+        } else {
+          const [ox, oz] = offset(shape, i);
+          x += ox * Math.cos(v.facing) + oz * Math.sin(v.facing);
+          z += -ox * Math.sin(v.facing) + oz * Math.cos(v.facing);
         }
+        const ground = heightAt(this.mapID, x, z);
+        if (!this.actorVisibility.visible(x, ground + 1.5, z)) continue;
         const fade =
           this.heroMode && activeHero
             ? crowdVisibility(
                 x,
-                heightAt(this.mapID, x, z) + (mounted ? 1.9 : 1.25),
+                ground + (mounted ? 1.9 : 1.25),
                 z,
                 mounted ? 1.25 : 0.65,
                 this.camera.position,
@@ -1526,7 +1568,6 @@ export class World {
             !body && attacking && !isRanged(spec.kind) && !mounted
               ? Math.sin(attackPhase * Math.PI) * 0.28
               : 0;
-          const ground = heightAt(this.mapID, x, z);
           if (mounted)
             this.drawMount(
               x,
@@ -1608,6 +1649,15 @@ export class World {
         if (local) this.combatSound("step");
       }
       locomotion.wasAir = v.y > 0.01;
+      if (
+        !local &&
+        !this.actorVisibility.visible(
+          v.x,
+          heightAt(this.mapID, v.x, v.z) + v.y + 1.5,
+          v.z,
+        )
+      )
+        continue;
       if (this.characters.ready) {
         const kind = h.class === 2 ? "archer" : "sword",
           gear = outfit(h.owner, kind, h.class);
@@ -1742,6 +1792,14 @@ export class World {
     if (this.characters.ready) {
       this.fallen = this.fallen.filter((f) => this.time - f.at < 4.5);
       for (const f of this.fallen) {
+        if (
+          !this.actorVisibility.visible(
+            f.x,
+            heightAt(this.mapID, f.x, f.z) + 1,
+            f.z,
+          )
+        )
+          continue;
         const age = Math.max(0, this.time - f.at),
           gear = outfit(f.owner, f.kind);
         this.characters.draw({
@@ -1778,6 +1836,9 @@ export class World {
   private drawLabels() {
     const s = this.state;
     if (!s) return;
+    // Read layout once, before any label HTML/style writes.
+    const width = this.canvas.clientWidth,
+      height = this.canvas.clientHeight;
     const used = new Set<string>();
     const show = (
       id: string,
@@ -1795,9 +1856,10 @@ export class World {
         this.labels.append(node);
       }
       if (node.innerHTML !== html) node.innerHTML = html;
-      node.className = "world-label " + cls;
+      const className = "world-label " + cls;
+      if (node.className !== className) node.className = className;
       tempV.set(x, y, z).project(this.camera);
-      node.style.transform = `translate(${(tempV.x * 0.5 + 0.5) * this.canvas.clientWidth}px,${(-tempV.y * 0.5 + 0.5) * this.canvas.clientHeight}px) translate(-50%,-50%)`;
+      node.style.transform = `translate(${(tempV.x * 0.5 + 0.5) * width}px,${(-tempV.y * 0.5 + 0.5) * height}px) translate(-50%,-50%)`;
       node.style.display =
         tempV.z > 1 || Math.abs(tempV.x) > 1.2 || Math.abs(tempV.y) > 1.2
           ? "none"
@@ -1946,6 +2008,7 @@ export class World {
     this.prepareHeroes();
     this.updateCamera(dt);
     this.camera.updateMatrixWorld();
+    this.actorVisibility.update(this.camera);
     this.drawArmy(dt);
     if (this.struck && this.heroMode && this.time - this.struck.at < 0.8) {
       const hit = this.struck,
