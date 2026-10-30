@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         drill: fileURLToPath(new URL("./drill.html", import.meta.url)),
+        crowd: fileURLToPath(new URL("./crowd-lab.html", import.meta.url)),
       },
       output: { manualChunks: { three: ["three"] } },
     },

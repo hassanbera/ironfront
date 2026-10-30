@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+Kalabalık geçişi tamamlandı: sabit asker kimlikleri, komşuluk ızgarasıyla dairesel ayrıştırma, hero için alt adımlı çarpışma, gerçek asker konumuna isabet, kamerayı kapatan gövdeleri soluklaştırma ve hero görünümünde detay/veri aktarımı optimizasyonu. Yerel 400 asker ölçümleri ve sınırlar: [CROWD_VALIDATION.md](CROWD_VALIDATION.md).
+
 Hero kontrol geçişi tamamlandı: kamera yönüne göre A/D düzeltmesi, ok tuşları, geri/yan adımlar, yönünü koruyan kaçınma, 33 animasyon, temas zamanlaması, saldırı sırası ve sunucu onaylı isabet geri bildirimi. Turks kapüşonları da faction rengine boyanır. Ayrıntılar ve kontroller: [HERO_FEEL.md](HERO_FEEL.md).
 
 | Sıra | Planlanan parça | Bitirme ölçütü | Önerilen commit kapsamı |
@@ -42,7 +44,7 @@ Bunlar henüz tamamlanmış özellikler değildir. Her parça ayrı uygulanır, 
 
 ## Bilinen sınırlar ve kapsam
 
-- Hasar ve hareket simülasyonu birlik seviyesindedir. Ekrandaki askerler bağımsız 400 fizik nesnesi değildir.
+- Emir ve toplam can birlik seviyesindedir. Asker konumları artık ayrı hafif çarpışma daireleriyle ayrıştırılır; tam rigid-body, asker başına ayrı can veya kılıç kemiği hitbox sistemi değildir.
 - İnternet gecikmesinde tahmin/rollback, kalıcı oturum, matchmaking, hesap ve maç geçmişi yoktur.
 - PostgreSQL ancak hesap/geçmiş gibi kalıcılık ihtiyacı doğarsa değerlendirilir. Mevcut oyun için gerekmez.
 - Kaynak/altın/tarım ve ekonomik ilerleme eklemek kapsam dışıdır.

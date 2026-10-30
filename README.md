@@ -16,7 +16,11 @@ GitHub reposu kaynak kod içerir; `.exe`, `node_modules` ve `frontend/dist` repo
 
 Oyun klavye ve fare içindir. Dar ekran menüsü uyarlanır, dokunmatik savaş kontrolü yoktur.
 
-### Güncellenen hero sürümü
+### Kalabalık ve hero çarpışma sürümü
+
+Güncel yerel sürüm `start-crowd.cmd` ile **http://localhost:8789** adresinde açılır. 8787 ve 8788'deki eski maçlar korunur. Repodan hazırlarken `npm run build`, ardından `server/` içinden `go build -o ../ironfront-server-crowd.exe .` çalıştır. Yeni asker çarpışmaları ve hedef işaretleri için istemci ile Go sunucusu birlikte güncel olmalıdır. [Kalabalık, kamera ve performans doğrulaması](docs/CROWD_VALIDATION.md).
+
+### Önceki hero sürümü
 
 Yerel teslimde `start-hero.cmd`, yeni sunucuyu `http://localhost:8788` adresinde çalıştırır. Bu ayrı port, 8787'de açık kalan eski maçları korumak içindir. Repodan hazırlamak için frontend'i derle, ardından `server/` içinden `go build -o ../ironfront-server-hero.exe .` çalıştır. Normal kaynak kurulumu ve dağıtımda varsayılan 8787 kullanılabilir; yeni hero davranışları için sunucu ve istemci birlikte güncel olmalıdır. [Hero kontrol ve temas değişiklikleri](docs/HERO_FEEL.md).
 
@@ -96,7 +100,8 @@ Esc fare kilidini bırakır; yeniden tıklamak yakalar. Fare kilidi desteklenmiy
 
 - **Sunucu otoriter:** konum, hasar, cooldown, seçim sahipliği, kapasite ve zafer istemci tarafından belirlenemez.
 - **20 Hz** sabit simülasyon, **10 Hz** durum yayını. Her oda en fazla dört oyuncu.
-- Sunucu tek tek asker yerine 25 kişilik birlikleri simüle eder. Görsel askerler, kayıplar ve animasyonlar istemcide `InstancedMesh` ile çizilir. Bu ilk sürüm bağımsız 400 asker fiziği / çarpışması içermez.
+- Emirler ve toplam can 25 kişilik birlik düzeyindedir. Her canlı asker ayrıca sabit kimlikli, hafif bir çarpışma dairesine sahiptir; 3 m komşuluk ızgarası askerleri ve hero'yu ayırır. Bineklerin gövdesi ve dizilim aralığı daha geniştir. Tam rigid-body fizik veya asker başına ayrı can sistemi yoktur.
+- Hero teması gerçek asker konumundan seçilir. Vurulan asker parlar, darbe tepkisi verir ve üzerinde hasar etiketi görünür; ölümcül vuruş aynı askeri düşürür. Kameranın önünü kapatan asker/binekler soluklaşır, kamerayı çevreleyen gövdeler gizlenir. Hero tam görünür kalır.
 - Grid A* ve yol sadeleştirme kayaları/üsleri dolaşır. Ağaç kümeleri örtü ve yavaşlatma bölgeleridir; her ağaç ayrı çarpışma nesnesi değildir.
 - Konumlar istemcide yumuşatılır. Girdi tahmini / rollback uygulanmadı; gecikme göstergesi gerçek ping ölçer.
 - Bağlantı başına 4 KB mesaj sınırı, komut hız sınırı, oda limiti, origin denetimi, yavaş istemcide eski snapshot düşürme ve boş odaların 2 dakika sonra temizlenmesi vardır.
@@ -123,11 +128,12 @@ Sunucu açıkken, proje kökünden:
 node scripts/network-test.mjs
 node scripts/validate-character-assets.mjs
 node --experimental-strip-types scripts/hero-controls-test.mjs
+node --experimental-strip-types scripts/crowd-visibility-test.mjs
 ```
 
 Ağ testi dört gerçek WebSocket bağlantısı açar: beşinci oyuncu reddi, oda sahibinin başlatması, 400 asker, emir sahipliği, hareket/dizilim/hero senkronizasyonu ve doğru/yanlış token ile yeniden bağlantıyı kontrol eder. Go testleri ana üs devri, ele geçirme, cooldown, kapasite, flank, fark etme, hero blok/kaçınma, tüm haritalarda yol bulma ve üç tam bot maçını kapsar.
 
-Karakter kontrolü klip sürelerini, sonlu poz matrislerini, kemik ağırlıklarını, indeksleri ve detay seviyelerini doğrular; sunucu gerektirmez. Görsel kontroller ve yerel performans ölçümü: [VISUAL_UPGRADE.md](docs/VISUAL_UPGRADE.md).
+Karakter kontrolü klip sürelerini, sonlu poz matrislerini, kemik ağırlıklarını, indeksleri ve detay seviyelerini doğrular; sunucu gerektirmez. İlk görsel geçiş: [VISUAL_UPGRADE.md](docs/VISUAL_UPGRADE.md). Güncel çarpışma/kamera testleri, ölçüm koşulları ve tekrar edilebilir `/crowd-lab.html` sayfası: [CROWD_VALIDATION.md](docs/CROWD_VALIDATION.md).
 
 ## Vercel'e hazırlık
 

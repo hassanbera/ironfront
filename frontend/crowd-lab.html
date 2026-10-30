@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>IRONFRONT · Kalabalık testi</title>
+  </head>
+  <body style="margin: 0; background: #18251d; color: #fff; font: 14px Arial">
+    <div id="scene" style="position: fixed; inset: 0"></div>
+    <div
+      style="
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 10;
+        background: #17221de8;
+        padding: 16px;
+      "
+    >
+      <b>YEREL KALABALIK TESTİ</b>
+      <p>400 asker · sabit kamera · çevrimiçi maç değil</p>
+      <button id="measure">10 saniye ölç</button>
+      <button id="occlusion">Kalabalıkta kamerayı dene</button>
+      <pre id="result">Modeller hazırlanıyor…</pre>
+    </div>
+    <script type="module" src="/src/crowd-lab.ts"></script>
+  </body>
+</html>
