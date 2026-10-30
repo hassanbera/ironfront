@@ -1116,6 +1116,51 @@ body.menu #viewport:after {
   padding: 15px;
   pointer-events: auto;
 }
+.hero-feedback {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 57%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  font:
+    600 12px Barlow,
+    sans-serif;
+  letter-spacing: 2px;
+  color: #e2dfd0;
+  text-shadow: 0 2px 4px #14221c;
+  transition: color 0.08s;
+}
+.hero-feedback.hit {
+  color: #ffe5a6;
+  font-size: 16px;
+}
+.hero-feedback.stance {
+  left: 24px;
+  top: auto;
+  bottom: 145px;
+  transform: none;
+  font-size: 10px;
+  opacity: 0.8;
+}
+.hero-feedback.block {
+  color: #d3e9ff;
+  font-size: 15px;
+}
+.hero-feedback.hurt {
+  color: #ff9d8d;
+  font-size: 15px;
+}
+#crosshair[data-feedback="hit"] {
+  color: #ffe5a6;
+  filter: drop-shadow(0 0 6px #ffd582);
+}
+#crosshair[data-feedback="block"] {
+  color: #d3e9ff;
+}
+#crosshair[data-feedback="hurt"] {
+  color: #ff9d8d;
+}
 .hero-hud-title {
   display: flex;
   align-items: center;

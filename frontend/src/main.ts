@@ -338,7 +338,19 @@ world.onOrder = (x, z, target, attack) => {
   });
 };
 world.onAction = (action) => {
-  if (!modalType) net.send({ type: "action", action });
+  if (!modalType) {
+    world.onInput();
+    net.send({ type: "action", action });
+  }
+};
+world.onInput = () => {
+  if (started && world.heroMode && net.status === "online")
+    net.send({
+      type: "input",
+      input: modalType
+        ? { x: 0, z: 0, facing: world.heroYaw, block: false }
+        : world.heroInput(),
+    });
 };
 $("select-all").onclick = () =>
   setSelected(
@@ -539,15 +551,7 @@ function toggleHero() {
 $("hero-toggle").onclick = toggleHero;
 $("hero-exit").onclick = toggleHero;
 $("hero-hint").onclick = () => world.requestMouseLock();
-setInterval(() => {
-  if (started && world.heroMode && net.status === "online")
-    net.send({
-      type: "input",
-      input: modalType
-        ? { x: 0, z: 0, facing: world.heroYaw, block: false }
-        : world.heroInput(),
-    });
-}, 50);
+setInterval(() => world.onInput(), 50);
 function drawMinimap() {
   if (!game) return;
   const canvas = $<HTMLCanvasElement>("minimap"),
@@ -678,7 +682,7 @@ function showGuide(faction = chosenFaction) {
 function showHelp() {
   openModal(
     "help",
-    `<div class="eyebrow">KOMUTANIN EL KİTABI</div><h2>Önce mevzi. Sonra zamanlama.</h2><div class="how-grid"><section><h3>RTS komutları</h3><div class="help-keys"><div><kbd class="key">SOL TIK / SÜRÜKLE</kbd> Birlik seç · Shift ile ekle</div><div><kbd class="key">SAĞ TIK</kbd> Hareket / düşmana saldır</div><div><kbd class="key">F + SOL TIK</kbd> Saldırarak ilerle</div><div><kbd class="key">W A S D</kbd> Kamerayı taşı</div><div><kbd class="key">Q / E · TEKERLEK</kbd> Kamerayı döndür · yakınlaş</div><div><kbd class="key">1–9 · CTRL+1–9</kbd> Birlik/grup seç · grup kaydet</div><div><kbd class="key">Z / X / C</kbd> Faction dizilimini değiştir</div><div><kbd class="key">H / R</kbd> Mevziyi koru / ana üsse dön</div></div></section><section><h3>Kahraman kontrolü</h3><div class="help-keys"><div><kbd class="key">TAB</kbd> RTS / üçüncü şahıs geçişi</div><div><kbd class="key">W A S D · FARE</kbd> Hareket et · bakış yönünü değiştir</div><div><kbd class="key">SOL / SAĞ TIK</kbd> Saldır / önden blokla</div><div><kbd class="key">SPACE</kbd> Zıpla</div><div><kbd class="key">SHIFT</kbd> Kaçın · 30 dayanıklılık</div><div><kbd class="key">Q</kbd> Sınıf yeteneği · 25 dayanıklılık</div><div><kbd class="key">ESC</kbd> Fareyi serbest bırak</div></div><p>Kahraman 20 saniyede faal ana üste döner. Kahramanı yönetirken birlikler son emirlerini uygulamaya devam eder.</p></section><section><h3>Ele geçir. Yerini koru.</h3><p>Başlangıç: 4 birlik × 25 asker = 100 kapasite. Outpostta 9 saniye kal: +25 kapasite. Rakip üssü yık ve bölgede 14 saniye kal: yeni faal üs. İlk faal üs 100, diğer her üs +50 kapasite verir.</p><p>Ana üssün düşerse başka bir faal üssün ana üs olur. Fazla kapasitedeki mevcut askerler silinmez; yeni asker ve takviyeler kapasite geri gelene kadar bekler. Çekişmeli bölgelerde ele geçirme durur.</p></section><section><h3>Takviye ve zafer</h3><p>Eksik askerler sınıf bekleme süresinden sonra, herhangi bir dost üssün yakınında ve çatışma dışında yenilenir. Tamamen düşen birlik ana üste yeniden doğar. Birlik çağırmak para gerektirmez; kapasite ve süre yeterlidir.</p><p>Son faal faction kazanır. 20 dakika dolarsa kapasite × 4 + düşürülen asker puanı karşılaştırılır; eşit puan beraberliktir. Üssüz, askersiz ve kahramansız faction elenir.</p></section></div><div class="tip-box">Senaryo: Viking kalkanlıları şövalyeleri cephede tutarken Türk kargıcıları arkadan vurur. Şövalyelerin tepki süresi bitmeden ikinci saldırı çok daha etkili olur. Dar geçitler, orman örtüsü ve yüksek arazi bu zamanlamayı değiştirir.</div><p class="credits">3D çevre: <a href="https://kenney.nl/assets/castle-kit" target="_blank" rel="noreferrer">Kenney Castle Kit</a> ve <a href="https://kenney.nl/assets/nature-kit" target="_blank" rel="noreferrer">Nature Kit</a> · CC0. Birlikler ve animasyonlar prosedürel olarak oluşturulur.</p>`,
+    `<div class="eyebrow">KOMUTANIN EL KİTABI</div><h2>Önce mevzi. Sonra zamanlama.</h2><div class="how-grid"><section><h3>RTS komutları</h3><div class="help-keys"><div><kbd class="key">SOL TIK / SÜRÜKLE</kbd> Birlik seç · Shift ile ekle</div><div><kbd class="key">SAĞ TIK</kbd> Hareket / düşmana saldır</div><div><kbd class="key">F + SOL TIK</kbd> Saldırarak ilerle</div><div><kbd class="key">W A S D</kbd> Kamerayı taşı</div><div><kbd class="key">Q / E · TEKERLEK</kbd> Kamerayı döndür · yakınlaş</div><div><kbd class="key">1–9 · CTRL+1–9</kbd> Birlik/grup seç · grup kaydet</div><div><kbd class="key">Z / X / C</kbd> Faction dizilimini değiştir</div><div><kbd class="key">H / R</kbd> Mevziyi koru / ana üsse dön</div></div></section><section><h3>Kahraman kontrolü</h3><div class="help-keys"><div><kbd class="key">TAB</kbd> RTS / üçüncü şahıs geçişi</div><div><kbd class="key">WASD / OKLAR · FARE</kbd> Hareket et · bakış yönünü değiştir</div><div><kbd class="key">SOL / SAĞ TIK</kbd> Saldır / önden blokla</div><div><kbd class="key">SPACE</kbd> Zıpla</div><div><kbd class="key">SHIFT</kbd> Yön + kaçın · Yönsüz: geri</div><div><kbd class="key">Q</kbd> Sınıf yeteneği · 25 dayanıklılık</div><div><kbd class="key">ESC</kbd> Fareyi serbest bırak</div></div><p>Kahraman 20 saniyede faal ana üste döner. Kahramanı yönetirken birlikler son emirlerini uygulamaya devam eder.</p></section><section><h3>Ele geçir. Yerini koru.</h3><p>Başlangıç: 4 birlik × 25 asker = 100 kapasite. Outpostta 9 saniye kal: +25 kapasite. Rakip üssü yık ve bölgede 14 saniye kal: yeni faal üs. İlk faal üs 100, diğer her üs +50 kapasite verir.</p><p>Ana üssün düşerse başka bir faal üssün ana üs olur. Fazla kapasitedeki mevcut askerler silinmez; yeni asker ve takviyeler kapasite geri gelene kadar bekler. Çekişmeli bölgelerde ele geçirme durur.</p></section><section><h3>Takviye ve zafer</h3><p>Eksik askerler sınıf bekleme süresinden sonra, herhangi bir dost üssün yakınında ve çatışma dışında yenilenir. Tamamen düşen birlik ana üste yeniden doğar. Birlik çağırmak para gerektirmez; kapasite ve süre yeterlidir.</p><p>Son faal faction kazanır. 20 dakika dolarsa kapasite × 4 + düşürülen asker puanı karşılaştırılır; eşit puan beraberliktir. Üssüz, askersiz ve kahramansız faction elenir.</p></section></div><div class="tip-box">Senaryo: Viking kalkanlıları şövalyeleri cephede tutarken Türk kargıcıları arkadan vurur. Şövalyelerin tepki süresi bitmeden ikinci saldırı çok daha etkili olur. Dar geçitler, orman örtüsü ve yüksek arazi bu zamanlamayı değiştirir.</div><p class="credits">3D çevre: <a href="https://kenney.nl/assets/castle-kit" target="_blank" rel="noreferrer">Kenney Castle Kit</a> ve <a href="https://kenney.nl/assets/nature-kit" target="_blank" rel="noreferrer">Nature Kit</a> · CC0. Karakter ve animasyonlar: KayKit (CC0). Binekler ve sesler prosedüreldir.</p>`,
     true,
   );
 }

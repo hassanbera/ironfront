@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Characters, outfit } from "./characters";
+import { heroMovement, movementClip } from "./hero-controls";
 import {
   rules,
   clamp,
@@ -94,6 +95,7 @@ export class World {
   onOrder: (x: number, z: number, target: number, attack: boolean) => void =
     () => {};
   onAction: (action: string) => void = () => {};
+  onInput: () => void = () => {};
   onModeExit: () => void = () => {};
   keys = new Set<string>();
   attackMove = false;
@@ -150,6 +152,23 @@ export class World {
     hero: boolean;
   }> = [];
   private deathID = 0;
+  private heroMotion = new Map<
+    number,
+    { x: number; z: number; phase: number; wasAir: boolean; landed: number }
+  >();
+  private feedbackUntil = 0;
+  private feedbackText = "";
+  private feedbackKind = "";
+  private cameraKick = 0;
+  private footstep = 0;
+  private swing: THREE.Mesh | null = null;
+  private sparks: Array<{
+    mesh: THREE.Mesh;
+    vx: number;
+    vy: number;
+    vz: number;
+    life: number;
+  }> = [];
   constructor(host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -163,6 +182,10 @@ export class World {
       "3D savaş alanı. Sol tıkla birlik seç, sağ tıkla komut ver.",
     );
     host.append(this.canvas);
+    const cue = document.createElement("div");
+    cue.id = "hero-feedback";
+    cue.className = "hero-feedback hidden";
+    host.append(cue);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -710,6 +733,8 @@ export class World {
       this.fallen.length = 0;
       this.hits.clear();
       this.shots.clear();
+      this.heroMotion.clear();
+      this.feedbackUntil = 0;
     } else {
       for (const squad of state.squads) {
         const old = previous.squads.find((s) => s.id === squad.id);
@@ -742,6 +767,29 @@ export class World {
       }
       for (const hero of state.heroes) {
         const old = previous.heroes.find((h) => h.owner === hero.owner);
+        if (old && hero.owner === owner && this.heroMode) {
+          if (hero.attackAt > 0 && hero.attackAt !== old.attackAt)
+            this.combatSound("swing");
+          if ((hero.impactAt || 0) > (old.impactAt || 0)) {
+            const blocked = hero.impactKind === "block";
+            this.feedbackText = blocked
+              ? "KALKANA ÇARPTI"
+              : `İSABET · ${Math.round(hero.impactDamage || 0)}`;
+            this.feedbackKind = blocked ? "block" : "hit";
+            this.feedbackUntil = this.time + 0.55;
+            this.cameraKick = blocked ? 0.08 : 0.13;
+            this.burst(hero.impactX ?? hero.x, hero.impactZ ?? hero.z, blocked);
+            this.combatSound(blocked ? "block" : "hit");
+          } else if (hero.hp < old.hp) {
+            const blocked = (hero.blockAt || 0) > (old.blockAt || 0);
+            this.feedbackText = blocked ? "BLOK" : "DARBE ALDIN";
+            this.feedbackKind = blocked ? "block" : "hurt";
+            this.feedbackUntil = this.time + 0.45;
+            this.cameraKick = blocked ? 0.06 : 0.16;
+            this.burst(hero.x, hero.z, blocked);
+            this.combatSound(blocked ? "block" : "hit");
+          }
+        }
         if (old && hero.hp < old.hp)
           this.hits.set(10000 + hero.owner, this.time);
         if (old && old.hp > 0 && hero.hp <= 0)
@@ -1242,54 +1290,132 @@ export class World {
         v = { x: h.x, z: h.z, facing: h.facing };
         this.smooth.set(id, v);
       }
-      const moving = Math.hypot(v.x - h.x, v.z - h.z) > 0.03;
-      v.x += (h.x - v.x) * ease;
-      v.z += (h.z - v.z) * ease;
-      v.facing = h.facing;
+      const local = this.heroMode && h.owner === this.owner;
+      const heroEase = 1 - Math.exp(-dt * (local ? 28 : 16));
+      const dx = (h.x - v.x) * heroEase,
+        dz = (h.z - v.z) * heroEase;
+      const speed = Math.hypot(dx, dz) / Math.max(dt, 0.001);
+      const moving = speed > 0.25;
+      v.x += dx;
+      v.z += dz;
+      v.facing = local ? this.heroYaw : h.facing;
+      let locomotion = this.heroMotion.get(h.owner);
+      if (!locomotion) {
+        locomotion = { x: 0, z: 0, phase: 0, wasAir: false, landed: -10 };
+        this.heroMotion.set(h.owner, locomotion);
+      }
+      if (moving) {
+        locomotion.x = dx;
+        locomotion.z = dz;
+        locomotion.phase += Math.hypot(dx, dz) * 0.18;
+      }
+      if (locomotion.wasAir && h.y <= 0.01) {
+        locomotion.landed = this.time;
+        if (local) this.combatSound("step");
+      }
+      locomotion.wasAir = h.y > 0.01;
       if (this.characters.ready) {
         const kind = h.class === 2 ? "archer" : "sword",
           gear = outfit(h.owner, kind, h.class);
         const attackAge = serverTime - h.attackAt;
         const hitAge = this.time - (this.hits.get(id) ?? -10);
         const dodging = h.dodgeUntil > serverTime;
-        const attacking = h.attackAt > 0 && attackAge >= 0 && attackAge < 0.55;
+        const duration = h.attackDuration || 0.55;
+        const attacking =
+          h.attackAt > 0 && attackAge >= 0 && attackAge < duration;
+        const travel = movementClip(locomotion.x, locomotion.z, v.facing);
+        const guardTravel = (
+          {
+            run: "guardRun",
+            back: "guardBack",
+            strafeLeft: "guardLeft",
+            strafeRight: "guardRight",
+          } as Record<string, string>
+        )[travel];
+        const landing = this.time - locomotion.landed < 0.18;
         const motion = dodging
-          ? "dodge"
+          ? movementClip(
+              h.dodgeX ?? locomotion.x,
+              h.dodgeZ ?? locomotion.z,
+              v.facing,
+              true,
+            )
           : h.y > 0.1
             ? "jump"
             : h.block
               ? hitAge < 0.24
                 ? "blockHit"
-                : "block"
+                : moving
+                  ? guardTravel
+                  : "block"
               : attacking
-                ? gear.attack
+                ? h.class === 2
+                  ? "shoot"
+                  : ["slash", "backslash", "stab"][h.attackKind || 0]
                 : hitAge < 0.24
                   ? "hit"
-                  : moving
-                    ? "run"
-                    : "idle";
+                  : landing
+                    ? "land"
+                    : moving
+                      ? travel
+                      : "idle";
         const phase = dodging
           ? (1 - (h.dodgeUntil - serverTime) / 0.3) *
-            this.characters.duration(gear.model, "dodge")
+            this.characters.duration(gear.model, motion)
           : attacking
-            ? (attackAge / 0.55) * this.characters.duration(gear.model, motion)
+            ? (attackAge / duration) *
+              this.characters.duration(gear.model, motion)
             : ["hit", "blockHit"].includes(motion)
               ? hitAge * 2
-              : this.time * 1.1;
+              : landing
+                ? (this.time - locomotion.landed) * 2
+                : moving
+                  ? locomotion.phase
+                  : this.time;
         this.characters.draw({
           id: `hero:${h.owner}`,
           ...gear,
           x: v.x,
           y: heightAt(this.mapID, v.x, v.z) + h.y,
           z: v.z,
-          facing: h.facing,
+          facing: v.facing,
           color: factionColors[h.owner],
           size: 1.16,
           motion,
           phase,
-          loop: !dodging && !attacking && !["hit", "blockHit"].includes(motion),
+          loop:
+            !dodging &&
+            !attacking &&
+            !["hit", "blockHit", "land"].includes(motion),
+          lean:
+            moving && travel === "run" && !h.block && !attacking && !dodging
+              ? -0.07
+              : 0,
           hit: hitAge < 0.15 ? 1 - hitAge / 0.15 : 0,
         });
+        if (local) {
+          this.canvas.dataset.heroMotion = motion;
+          this.canvas.dataset.heroFacing = String(v.facing);
+          this.heroCue(
+            motion,
+            attackAge / duration,
+            attacking,
+            h.block,
+            dodging,
+          );
+          this.drawSwing(
+            v.x,
+            v.z,
+            h.y,
+            v.facing,
+            attacking && h.class !== 2 ? attackAge / duration : -1,
+            h.attackKind || 0,
+          );
+          if (moving && !dodging && h.y <= 0.01 && this.time > this.footstep) {
+            this.footstep = this.time + (h.block ? 0.4 : 0.28);
+            this.combatSound("step");
+          }
+        }
       } else
         this.soldier(
           v.x,
@@ -1423,16 +1549,16 @@ export class World {
       if (h) {
         const p = this.smooth.get(10000 + h.owner) ?? h;
         const yaw = this.heroYaw;
-        const dist = 7.5;
+        const dist = 8.2;
         const look = new THREE.Vector3(
           p.x,
           heightAt(this.mapID, p.x, p.z) + 1.9 + h.y,
           p.z,
         );
         const goal = new THREE.Vector3(
-          p.x - Math.sin(yaw) * dist + Math.cos(yaw) * 1.05,
+          p.x - Math.sin(yaw) * dist - Math.cos(yaw) * 1.15,
           look.y + 2.2 + this.heroPitch * 6,
-          p.z - Math.cos(yaw) * dist - Math.sin(yaw) * 1.05,
+          p.z - Math.cos(yaw) * dist + Math.sin(yaw) * 1.15,
         );
         const direction = goal.clone().sub(look).normalize();
         let boom = look.distanceTo(goal);
@@ -1452,10 +1578,11 @@ export class World {
         goal.copy(look).addScaledVector(direction, boom);
         goal.y = Math.max(goal.y, heightAt(this.mapID, goal.x, goal.z) + 1.5);
         this.camera.position.lerp(goal, 1 - Math.exp(-dt * 12));
+        this.camera.position.y += Math.sin(this.time * 85) * this.cameraKick;
         this.camera.lookAt(
-          look.x + Math.sin(yaw) * 4,
+          look.x + Math.sin(yaw) * 6,
           look.y - 0.45 - this.heroPitch * 3,
-          look.z + Math.cos(yaw) * 4,
+          look.z + Math.cos(yaw) * 6,
         );
         return;
       }
@@ -1497,10 +1624,36 @@ export class World {
     const dt = Math.min(0.05, elapsed);
     this.last = now;
     this.time += dt;
+    this.cameraKick *= Math.exp(-dt * 22);
     this.frame++;
     this.fps = this.fps * 0.97 + (1 / Math.max(elapsed, 0.001)) * 0.03;
     this.updateCamera(dt);
     this.drawArmy(dt);
+    if (
+      !this.heroMode ||
+      !this.state?.heroes.some((h) => h.owner === this.owner && h.hp > 0)
+    ) {
+      document.getElementById("hero-feedback")?.classList.add("hidden");
+      if (this.swing) this.swing.visible = false;
+    }
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const s = this.sparks[i];
+      s.life -= dt;
+      s.vy -= 12 * dt;
+      s.mesh.position.x += s.vx * dt;
+      s.mesh.position.y += s.vy * dt;
+      s.mesh.position.z += s.vz * dt;
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(
+        0,
+        s.life / 0.3,
+      );
+      if (s.life <= 0) {
+        this.effects.remove(s.mesh);
+        s.mesh.geometry.dispose();
+        (s.mesh.material as THREE.Material).dispose();
+        this.sparks.splice(i, 1);
+      }
+    }
     if (this.frame % 3 === 0) this.drawLabels();
     for (let i = this.markers.length - 1; i >= 0; i--) {
       const m = this.markers[i];
@@ -1589,7 +1742,10 @@ export class World {
       if (this.heroMode) {
         if (e.button === 0) this.onAction("attack");
         if (e.button === 0) this.requestMouseLock();
-        if (e.button === 2) this.keys.add("Block");
+        if (e.button === 2) {
+          this.keys.add("Block");
+          this.onInput();
+        }
         return;
       }
       this.pointer = {
@@ -1636,7 +1792,10 @@ export class World {
     });
     window.addEventListener("pointerup", (e) => {
       if (this.heroMode) {
-        if (e.button === 2) this.keys.delete("Block");
+        if (e.button === 2) {
+          this.keys.delete("Block");
+          this.onInput();
+        }
         return;
       }
       if (!this.pointer.down) return;
@@ -1710,20 +1869,28 @@ export class World {
       )
         e.preventDefault();
       if (this.heroMode && !e.repeat) {
+        this.onInput();
         if (e.code === "Space") this.onAction("jump");
         if (e.code === "ShiftLeft" || e.code === "ShiftRight")
           this.onAction("dodge");
         if (e.code === "KeyQ") this.onAction("skill");
       }
     });
-    window.addEventListener("keyup", (e) => this.keys.delete(e.code));
+    window.addEventListener("keyup", (e) => {
+      this.keys.delete(e.code);
+      if (this.heroMode) this.onInput();
+    });
     window.addEventListener("blur", () => {
       this.keys.clear();
+      this.onInput();
       this.pointer.down = false;
       this.box.style.display = "none";
     });
     document.addEventListener("pointerlockchange", () => {
-      if (document.pointerLockElement !== this.canvas) this.keys.clear();
+      if (document.pointerLockElement !== this.canvas) {
+        this.keys.clear();
+        this.onInput();
+      }
     });
   }
   requestMouseLock() {
@@ -1768,19 +1935,7 @@ export class World {
     }
   }
   heroInput() {
-    let x = 0,
-      z = 0;
-    if (this.keys.has("KeyW")) z += 1;
-    if (this.keys.has("KeyS")) z -= 1;
-    if (this.keys.has("KeyA")) x -= 1;
-    if (this.keys.has("KeyD")) x += 1;
-    const l = Math.max(1, Math.hypot(x, z));
-    return {
-      x: (x * Math.cos(this.heroYaw) + z * Math.sin(this.heroYaw)) / l,
-      z: (-x * Math.sin(this.heroYaw) + z * Math.cos(this.heroYaw)) / l,
-      facing: this.heroYaw,
-      block: this.keys.has("Block"),
-    };
+    return heroMovement(this.keys, this.heroYaw);
   }
   focusBase() {
     const b = this.state?.bases.find(
@@ -1810,6 +1965,153 @@ export class World {
       this.audio.resume();
       this.tone(260, 0.12, 0.03);
     }
+  }
+  private heroCue(
+    motion: string,
+    progress: number,
+    attacking: boolean,
+    blocking: boolean,
+    dodging: boolean,
+  ) {
+    const cue = document.getElementById("hero-feedback");
+    if (!cue) return;
+    cue.classList.remove("hidden");
+    const feedback = this.time < this.feedbackUntil;
+    const action = dodging
+      ? "KAÇINMA"
+      : blocking
+        ? "SAVUNMA"
+        : attacking
+          ? progress < 0.3
+            ? "HAZIRLIK"
+            : progress < 0.55
+              ? "VURUŞ"
+              : "TOPARLANMA"
+          : motion === "back"
+            ? "GERİ ADIM"
+            : motion.startsWith("strafe")
+              ? "YAN ADIM"
+              : motion === "run"
+                ? "KOŞU"
+                : motion === "jump"
+                  ? "HAVADA"
+                  : "HAZIR";
+    cue.className =
+      "hero-feedback " + (feedback ? this.feedbackKind : "stance");
+    cue.textContent = feedback ? this.feedbackText : action;
+    const cross = document.getElementById("crosshair");
+    if (cross) cross.dataset.feedback = feedback ? this.feedbackKind : "";
+  }
+  private drawSwing(
+    x: number,
+    z: number,
+    y: number,
+    facing: number,
+    p: number,
+    kind: number,
+  ) {
+    if (!this.swing) {
+      const vertices: number[] = [];
+      for (let i = 0; i < 24; i++) {
+        const a = -1.05 + (i / 24) * 1.8,
+          b = -1.05 + ((i + 1) / 24) * 1.8;
+        for (const [t, r] of [
+          [a, 1.9],
+          [a, 2.2],
+          [b, 2.2],
+          [a, 1.9],
+          [b, 2.2],
+          [b, 1.9],
+        ])
+          vertices.push(Math.sin(t) * r, 0, Math.cos(t) * r);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(vertices, 3),
+      );
+      this.swing = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          color: "#ffe5ae",
+          transparent: true,
+          opacity: 0.25,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      this.effects.add(this.swing);
+    }
+    this.swing.visible = p > 0.26 && p < 0.56;
+    if (!this.swing.visible) return;
+    this.swing.position.set(x, heightAt(this.mapID, x, z) + 1.45 + y, z);
+    this.swing.rotation.set(
+      kind === 1 ? 0.45 : kind === 2 ? -0.55 : 0,
+      facing + (p - 0.42) * 3,
+      0,
+      "YXZ",
+    );
+    (this.swing.material as THREE.MeshBasicMaterial).opacity =
+      Math.sin(((p - 0.26) / 0.3) * Math.PI) * 0.3;
+  }
+  private burst(x: number, z: number, block: boolean) {
+    if (this.sparks.length > 80) return;
+    for (let i = 0; i < 8; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.035, 0.035, 0.18),
+        new THREE.MeshBasicMaterial({
+          color: block ? "#eef6ff" : "#ffcf83",
+          transparent: true,
+          depthWrite: false,
+        }),
+      );
+      mesh.position.set(x, heightAt(this.mapID, x, z) + 1.4, z);
+      mesh.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+      const a = (i * Math.PI) / 4;
+      this.effects.add(mesh);
+      this.sparks.push({
+        mesh,
+        vx: Math.sin(a) * 3,
+        vy: 1.5 + Math.random() * 2,
+        vz: Math.cos(a) * 3,
+        life: 0.3,
+      });
+    }
+  }
+  private combatSound(kind: "swing" | "hit" | "block" | "step") {
+    if (!this.sound || !this.audio) return;
+    const ctx = this.audio,
+      duration = kind === "step" ? 0.06 : kind === "swing" ? 0.15 : 0.12;
+    const buffer = ctx.createBuffer(
+        1,
+        Math.ceil(ctx.sampleRate * duration),
+        ctx.sampleRate,
+      ),
+      data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++)
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const source = ctx.createBufferSource(),
+      filter = ctx.createBiquadFilter(),
+      gain = ctx.createGain();
+    source.buffer = buffer;
+    filter.type = kind === "block" ? "highpass" : "lowpass";
+    filter.frequency.value =
+      kind === "block"
+        ? 1900
+        : kind === "swing"
+          ? 1200
+          : kind === "step"
+            ? 180
+            : 600;
+    gain.gain.setValueAtTime(kind === "step" ? 0.025 : 0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    source.stop(ctx.currentTime + duration);
+    if (kind === "block") this.tone(1450, 0.09, 0.035);
+    if (kind === "hit") this.tone(95, 0.1, 0.06);
   }
   private tone(freq: number, length: number, volume: number) {
     if (!this.audio) return;

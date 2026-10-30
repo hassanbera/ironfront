@@ -72,6 +72,17 @@ export interface Hero {
   respawn: number;
   attackAt: number;
   dodgeUntil: number;
+  attackKind?: number;
+  attackDuration?: number;
+  attackImpact?: number;
+  impactAt?: number;
+  impactX?: number;
+  impactZ?: number;
+  impactDamage?: number;
+  impactKind?: string;
+  blockAt?: number;
+  dodgeX?: number;
+  dodgeZ?: number;
   skillReady: number;
   guardUntil: number;
 }
