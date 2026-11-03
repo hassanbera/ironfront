@@ -1,4 +1,4 @@
-"""Run in Blender's Python. Extend the existing baked meshes without duplicating body geometry."""
+"""Build the duelists' fitted clothing and socketed gear against the baked rigs."""
 import json
 from pathlib import Path
 import sys
@@ -8,6 +8,7 @@ HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE))
 from materials import generate, atlas_uv
 from equipment import Equipment
+from wardrobe import Garments
 
 ROOT=HERE.parents[1]
 OUT=ROOT/'frontend/public/assets/characters'
@@ -57,18 +58,41 @@ def body_surface(name, body, blob):
     uv=np.column_stack(atlas_uv(tiles,u,v))
     return uv,np.column_stack((rgb,np.zeros(len(rgb))))
 
+def fabric_body(name, source, blob, tier):
+    """Keep the articulated face, gloves and feet. Replace the original outfit."""
+    uv, paint = body_surface(name, source, blob)
+    joints = channel(blob, source, 'skinIndex')[:,0]
+    feet=np.isin(joints,[17,18,21,22])
+    paint[feet,:3]=(.20,.026,.025) if name=='ranger' else (.18,.115,.082)
+    tile = (uv[:,0]*4).astype(int) + 4*(uv[:,1]*3).astype(int)
+    keep = np.isin(joints,[6,7,11,12,17,18,21,22])
+    if name=='ranger':
+        keep |= (joints==14) & (tile!=0)
+    tris=channel(blob,source,'index').reshape(-1,3).astype(int)
+    keep_tris=tris[keep[tris].all(axis=1)]
+    vertices,indices=np.unique(keep_tris.ravel(),return_inverse=True)
+    body={}
+    for key in WIDTHS:
+        if key=='index': body[key]=indices
+        else:
+            values=uv if key=='uv' else paint if key=='paint' else channel(blob,source,key)
+            body[key]=values[vertices].ravel()
+    garment=Garments(tier).make(name=='ranger')
+    return merge(body,garment)
+
+def merge(a,b):
+    offset=len(a['position'])//3
+    return {k:np.concatenate((a[k],np.asarray(b[k])+(offset if k=='index' else 0))) for k in WIDTHS}
+
 def build_mesh(name):
     path=OUT/(name+'.json')
     meta=json.loads(path.read_text())
     geos=meta['geometries']
     raw=(OUT/(name+'-mesh.bin')).read_bytes()
-    # The two addon geometries may already exist when the artist rebuilds.
-    original=[g for key,g in geos.items() if key not in ('duelBody','duelSword')]
+    # Start at the end of the base model on every rebuild.
+    original=[g for key,g in geos.items() if not key.startswith('duel')]
     end=max(f['offset']+f['length']*4 for g in original for f in g.values())
     packed=bytearray(raw[:end])
-    body=geos['body']
-    uv,paint=body_surface(name,body,raw)
-    geos['duelBody']={**body,'uv':append(packed,uv,'uv'),'paint':append(packed,paint,'paint')}
     # Last three pose slots are right grip, left grip and bowstring (base baker).
     joint=meta['bones']-3
     fields=Equipment(joint,joint+1).make(name=='ranger')
@@ -77,6 +101,11 @@ def build_mesh(name):
     top=blade[blade[:,1]==blade[:,1].max()]
     meta['duelBladeTip']=((top.min(0)+top.max(0))*.5).tolist()
     geos['duelSword']={key:append(packed,value,key) for key,value in fields.items()}
+    for tier, suffix in [('near',''),('mid','Mid'),('far','Far')]:
+        costume=fabric_body(name,geos['body'+suffix],raw,tier)
+        if tier=='far':
+            costume=merge(costume,Equipment(joint,joint+1).make(name=='ranger',far=True))
+        geos['duelBody'+suffix]={key:append(packed,value,key) for key,value in costume.items()}
     (OUT/(name+'-mesh.bin')).write_bytes(packed)
     path.write_text(json.dumps(meta,separators=(',',':'))+'\n')
     print(name,len(fields['index'])//3,'equipment triangles,',len(packed)-end,'additional mesh bytes')

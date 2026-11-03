@@ -44,6 +44,17 @@ def bind_slots(path):
     for i in doc['scenes'][0]['nodes']:visit(i,Matrix.Identity(4),'')
     return slots+extras+[(n,worlds[n]) for n in ('handslot.r','handslot.l','handslot.l')]
 
+def assign_normals(mesh,fields,blob,slots):
+    normals=[]
+    joints=channel(blob,fields,'skinIndex')[:,0].astype(int)
+    transforms=[matrix.to_3x3().inverted_safe().transposed() for _,matrix in slots]
+    for normal,j in zip(channel(blob,fields,'normal'),joints):
+        x,y,z=(transforms[j]@Vector(normal)).normalized()
+        normals.append((x,-z,y))
+    if hasattr(mesh,'use_auto_smooth'): mesh.use_auto_smooth=True
+    mesh.polygons.foreach_set('use_smooth',np.ones(len(mesh.polygons),dtype=bool))
+    mesh.normals_split_custom_set_from_vertices(normals)
+
 def add_mesh(scene,rig,kind,fields,blob,slots,mat):
     pos=channel(blob,fields,'position')
     idx=channel(blob,fields,'skinIndex').astype(int)
@@ -55,6 +66,7 @@ def add_mesh(scene,rig,kind,fields,blob,slots,mat):
     mesh=bpy.data.meshes.new(rig.name+' '+kind)
     mesh.from_pydata(positions,[],channel(blob,fields,'index').astype(int).reshape(-1,3).tolist())
     mesh.update()
+    assign_normals(mesh,fields,blob,slots)
     uv=mesh.uv_layers.new(name='Atlas')
     uvs=channel(blob,fields,'uv')
     for loop in mesh.loops:
@@ -92,7 +104,7 @@ def build_preview(source, destination, workshop):
         meta=json.loads((OUT/(model+'.json')).read_text());blob=(OUT/(model+'-mesh.bin')).read_bytes()
         for kind in ('duelBody','duelSword'): add_mesh(scene,rig,kind,meta['geometries'][kind],blob,slots,mat)
         for track in list(rig.animation_data.nla_tracks): rig.animation_data.nla_tracks.remove(track)
-        rig.animation_data.action=clips['blockHit' if side<0 else 'slash']
+        rig.animation_data.action=clips['slash']
         actions.update(clips.values())
         scale=json.loads((OUT.parents[2]/'src/figure-scale.json').read_text())
         rig.scale=(scale['x'],scale['z'],scale['y']);rig.location.x=side*1.03
@@ -101,14 +113,14 @@ def build_preview(source, destination, workshop):
         rig.hide_set(True)
     def aim(obj,at): obj.rotation_euler=(Vector(at)-obj.location).to_track_quat('-Z','Y').to_euler()
     cam=bpy.data.objects.new('Duel camera',bpy.data.cameras.new('Duel camera'))
-    scene.collection.objects.link(cam);cam.location=(.4,-6.8,2.65);aim(cam,(0,0,1.18));scene.camera=cam
+    scene.collection.objects.link(cam);cam.location=(0,-6.8,2.65);aim(cam,(0,0,1.18));scene.camera=cam
     for name,loc,power,size in [('Key',(-3,-3,5),590,4),('Rim',(2,2,4),650,3),('Fill',(4,-2,3),290,4)]:
         data=bpy.data.lights.new(name,'AREA');data.energy=power;data.shape='DISK';data.size=size
         light=bpy.data.objects.new(name,data);scene.collection.objects.link(light);light.location=loc;aim(light,(0,0,1))
     scene.world=bpy.data.worlds.new('Workshop');scene.world.color=(.18,.19,.2)
     scene.render.resolution_x=1280;scene.render.resolution_y=720
     frame_workshop(scene)
-    scene.frame_start=0;scene.frame_end=26;scene.frame_set(11)
+    scene.frame_start=0;scene.frame_end=26;scene.frame_set(0)
     for frame,label in [(0,'Ready'),(6,'Load'),(11,'Contact'),(16,'Follow-through'),(26,'Guard')]:
         scene.timeline_markers.new(label,frame=frame)
     for area in bpy.context.screen.areas:

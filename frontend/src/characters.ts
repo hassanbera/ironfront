@@ -267,7 +267,7 @@ export class Characters {
             1,
           ).setUsage(T.DynamicDrawUsage);
           geo.setAttribute("visibility", visibility);
-          const surface = kind === "duelBody" || kind === "duelSword" ? duelMaterial! : material;
+          const surface = kind.startsWith("duel") ? duelMaterial! : material;
           const mesh = new T.InstancedMesh(geo, surface, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -353,11 +353,13 @@ export class Characters {
           ? "bodyMid"
           : "body";
     const duel = actor.weapon === "duelSword";
-    const body = duel && detail === "body" ? "duelBody" : detail;
-    // At the far body LOD the shield occupies only a few pixels. Reuse the
-    // existing sword/shield batch, retaining the same hand pose and timing.
-    const weapon = duel && detail === "bodyFar" ? "sword" : actor.weapon;
-    for (const kind of [body, weapon]) {
+    const body = duel
+      ? detail === "body" ? "duelBody" : detail === "bodyMid" ? "duelBodyMid" : "duelBodyFar"
+      : detail;
+    // The distant costume already includes the socket-bound sword and shield.
+    const parts = body === "duelBodyFar" ? 1 : 2;
+    for (let part = 0; part < parts; part++) {
+      const kind = part === 0 ? body : actor.weapon;
       const batch =
         model.batches.get(kind) ||
         (kind.startsWith("body") ? model.batches.get("body") : undefined);

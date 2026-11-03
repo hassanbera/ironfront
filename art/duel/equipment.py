@@ -1,25 +1,11 @@
 """Low-poly socket-local silhouettes. Coordinates match the KayKit +Y blade sockets."""
 import math
-import numpy as np
-from materials import atlas_uv
+from surface import Surface
 
-class Equipment:
+class Equipment(Surface):
     def __init__(self, sword_joint, shield_joint):
+        super().__init__()
         self.sword, self.shield = sword_joint, shield_joint
-        self.fields = {key: [] for key in ('position','normal','uv','skinIndex','skinWeight','paint','index')}
-
-    def face(self, joint, points, tile, tint=(1,1,1), uv=None):
-        p = np.asarray(points)
-        normal = np.cross(p[1]-p[0],p[2]-p[0])
-        normal /= np.linalg.norm(normal)
-        first = len(self.fields['position'])//3
-        for i,(x,y,z) in enumerate(points):
-            u,v = uv[i] if uv else (min(.99,max(.01,.5+x)), min(.99,max(.01,.51-y*.67)))
-            for key,values in [('position',(x,y,z)),('normal',normal),('uv',atlas_uv(tile,u,v)),
-                               ('skinIndex',(joint,0,0,0)),('skinWeight',(1,0,0,0)),('paint',(*tint,0))]:
-                self.fields[key].extend(values)
-        for i in range(1,len(p)-1):
-            self.fields['index'].extend((first,first+i,first+i+1))
 
     def bands(self, joint, rings, tile, tint=(1,1,1)):
         for a,b in zip(rings,rings[1:]):
@@ -34,7 +20,7 @@ class Equipment:
         self.face(self.sword,list(reversed(rings[0])),tile,tint)
         self.face(self.sword,rings[-1],tile,tint)
 
-    def make(self,turk):
+    def make(self,turk,far=False):
         self.shaft([(-.27,.046,.044,0),(-.19,.067,.058,0),(.13,.054,.046,0)],1,(.32,.17,.10))
         self.shaft([(-.30,.025,.024,0),(-.26,.084,.059,-.012),(-.20,.065,.053,-.008)],7)
         self.shaft([(.105,.16,.046,0),(.139,.23 if turk else .20,.05,0),(.177,.13,.045,0)],7 if turk else 2)
@@ -45,12 +31,14 @@ class Equipment:
                      (1.20,.072,.017,-.17),(1.28,.042,.012,-.221),
                      (1.34,.002,.002,-.268)] if turk else
                     [(.15,.10,.036,0),(.28,.088,.034,0),(.9,.065,.025,0),(1.24,.046,.019,0),(1.42,.003,.003,0)])
+        if far: stations=stations[::2]+([stations[-1]] if len(stations)%2==0 else [])
         rings=[[(c-w,y,0),(c-w*.54 if turk else c,y,d),(c+w,y,0),
                 (c-w*.54 if turk else c,y,-d)] for y,w,d,c in stations]
         self.bands(self.sword,rings,2,(.87,.92,.98))
         # Shield front faces +Z. The reverse and edge are closed surfaces too.
         if turk:
-            shape=[(.44*math.cos(k*math.tau/24),.44*math.sin(k*math.tau/24)) for k in range(24)]
+            sides=12 if far else 24
+            shape=[(.44*math.cos(k*math.tau/sides),.44*math.sin(k*math.tau/sides)) for k in range(sides)]
         else:
             shape=[(.405,.42),(.25,.47),(-.25,.47),(-.405,.42),(-.39,.03),(-.32,-.22),
                    (-.18,-.42),(0,-.56),(.18,-.42),(.32,-.22),(.39,.03)]
@@ -65,7 +53,7 @@ class Equipment:
             panel([rings[2][i],rings[2][k],rings[3][k],rings[3][i]])
         panel(rings[3])
         self.face(self.shield,list(reversed(rings[0])),6)
-        if turk:
+        if turk and not far:
             boss=[[(r*math.cos(k*math.tau/12),r*math.sin(k*math.tau/12),z) for k in range(12)]
                   for r,z in [(.117,.237),(.099,.255),(.048,.306)]]
             self.bands(self.shield,boss,7)

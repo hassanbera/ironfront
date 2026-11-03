@@ -27,11 +27,18 @@ for(const name of ['knight','viking','ranger']){
     for(const i of fields.index)assert.ok(Number.isInteger(i)&&i>=0&&i<vertices);
     for(const i of fields.skinIndex)assert.ok(Number.isInteger(i)&&i>=0&&i<meta.bones);
     for(let i=0;i<fields.skinWeight.length;i+=4)assert.ok(Math.abs(fields.skinWeight.slice(i,i+4).reduce((a,b)=>a+b,0)-1)<.002);
+    if (kind.startsWith('duelBody')) {
+      const joints = new Set(fields.skinIndex.filter((_, i) => fields.skinWeight[i] > 0));
+      for (const grip of [meta.bones-3, meta.bones-2]) {
+        assert.equal(joints.has(grip), kind === 'duelBodyFar', name+' '+kind+' equipment binding');
+      }
+    }
     data[kind]=fields.index.length/3;
   }
   assert.ok(data.bodyFar<data.bodyMid&&data.bodyMid<data.body);
   if (name === 'knight' || name === 'ranger') {
-    assert.equal(data.duelBody, data.body, 'Detailed cloth must share the original body topology');
+    assert.ok(data.duelBodyMid < data.duelBody, 'Mid costume should reduce geometry');
+    assert.ok(data.duelBodyFar < data.duelBodyMid + data.duelSword, 'Far figure includes its weapon');
     assert.ok(data.duelSword > 0 && data.duelSword < 500, 'Duel equipment triangle budget');
     for (const motion of ['slash','backslash','stab','blockHit','hit','walk','run','dodgeLeft','dodgeRight']) {
       assert.equal(meta.animations['duel_'+motion]?.duration, meta.animations[motion].duration);
