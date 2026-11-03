@@ -10,6 +10,9 @@ async (page) => {
     const scene = new URL(location.href).searchParams.get("scene") || "hero400";
     const count = scene.endsWith("800") ? 800 : 400;
     const base = structuredClone(w.state);
+    const duel = new URL(location.href).searchParams.get("fighter") === "duel";
+    const owner = duel ? 3 : 0;
+    base.heroes[0].owner = owner;
     base.room = "RENDER-REPLAY";
     const initial = structuredClone(base.squads);
     if (count === 800)
@@ -26,6 +29,10 @@ async (page) => {
       s.hitSlots = 0;
       s.order = "hold";
       s.formation = 1;
+      if (duel && s.owner === 0 && s.class === 3 && j < 16) {
+        s.x = -2;
+        s.z = 43;
+      }
     }
     base.heroes[0].x = 0;
     base.heroes[0].z = 32;
@@ -142,7 +149,7 @@ async (page) => {
             : [];
       }
       const start = performance.now();
-      update(s, 0);
+      update(s, owner);
       if (measuring) times.update.push(performance.now() - start);
     };
     const summarize = (a) => {
@@ -183,6 +190,7 @@ async (page) => {
     const gpuInfo = gl.getExtension("WEBGL_debug_renderer_info");
     return {
       scene,
+      owner,
       fixtureChecksum,
       source: location.origin,
       viewport: [innerWidth, innerHeight],

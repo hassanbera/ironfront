@@ -354,8 +354,12 @@ export class Characters {
         : distance > (this.closeCombat ? 144 : 625)
           ? "bodyMid"
           : "body";
-    const body = actor.weapon === "duelSword" && detail === "body" ? "duelBody" : detail;
-    for (const kind of [body, actor.weapon]) {
+    const duel = actor.weapon === "duelSword";
+    const body = duel && detail === "body" ? "duelBody" : detail;
+    // At the far body LOD the shield occupies only a few pixels. Reuse the
+    // existing sword/shield batch, retaining the same hand pose and timing.
+    const weapon = duel && detail === "bodyFar" ? "sword" : actor.weapon;
+    for (const kind of [body, weapon]) {
       const batch =
         model.batches.get(kind) ||
         (kind.startsWith("body") ? model.batches.get("body") : undefined);
