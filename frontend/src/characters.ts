@@ -1,4 +1,5 @@
 import * as T from "three";
+import figureScale from "./figure-scale.json";
 import { fadeDeclarations, fadeDiscard } from "./visibility";
 
 type Clip = { start: number; frames: number; duration: number };
@@ -25,7 +26,6 @@ type Model = {
   depth: T.MeshDepthMaterial;
   texture: T.DataTexture;
   atlas: T.Texture;
-  scale: number;
 };
 type Blend = {
   motion: string;
@@ -46,7 +46,6 @@ export type Character = {
   motion: string;
   phase: number;
   loop: boolean;
-  size?: number;
   hit?: number;
   lean?: number;
   visibility?: number;
@@ -236,7 +235,6 @@ export class Characters {
           depth,
           texture,
           atlas,
-          scale: 2.15 / meta.height,
         };
         for (const [kind, fields] of Object.entries(meta.geometries)) {
           const geo = new T.BufferGeometry();
@@ -340,8 +338,8 @@ export class Characters {
     const mix = T.MathUtils.clamp((this.now - blend.at) / 0.12, 0, 1);
     matrix.position.set(actor.x, actor.y, actor.z);
     matrix.rotation.set(actor.lean || 0, actor.facing, 0, "YXZ");
-    const scale = model.scale * (actor.size || 1);
-    matrix.scale.set(scale * 0.92, scale * 1.16, scale * 0.95);
+    // Body rigs share anatomical landmarks; helmets and capes have different bounds.
+    matrix.scale.set(figureScale.x, figureScale.y, figureScale.z);
     matrix.updateMatrix();
     const distance =
       (actor.x - this.eye.x) ** 2 +

@@ -1146,7 +1146,6 @@ export class World {
   ) {
     const base = heightAt(this.mapID, x, z) + yExtra;
     const mount = isMounted(kind);
-    const size = hero ? 1.45 : 1;
     const y = base + (mount ? 1.1 : 0);
     const c = factionColors[owner];
     const stride = moving
@@ -1168,12 +1167,12 @@ export class World {
     ) =>
       this.put(
         name,
-        x + (dx * cos + dz * sin) * size,
-        y + dy * size,
-        z + (-dx * sin + dz * cos) * size,
-        sx * size,
-        sy * size,
-        sz * size,
+        x + dx * cos + dz * sin,
+        y + dy,
+        z - dx * sin + dz * cos,
+        sx,
+        sy,
+        sz,
         rx,
         facing,
         rz,
@@ -1726,7 +1725,6 @@ export class World {
           z: v.z,
           facing: v.facing,
           color: factionColors[h.owner],
-          size: 1.16,
           focus: local,
           motion,
           phase,
@@ -1812,7 +1810,6 @@ export class World {
           y: heightAt(this.mapID, f.x, f.z) - Math.max(0, age - 3.2) * 0.5,
           facing: f.facing,
           color: factionColors[f.owner],
-          size: f.hero ? 1.16 : 1,
           motion: "death",
           phase: age * 1.3,
           loop: false,

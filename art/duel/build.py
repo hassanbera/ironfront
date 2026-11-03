@@ -72,6 +72,10 @@ def build_mesh(name):
     # Last three pose slots are right grip, left grip and bowstring (base baker).
     joint=meta['bones']-3
     fields=Equipment(joint,joint+1).make(name=='ranger')
+    vertices=np.array(fields['position']).reshape(-1,3)
+    blade=vertices[np.array(fields['skinIndex']).reshape(-1,4)[:,0]==joint]
+    top=blade[blade[:,1]==blade[:,1].max()]
+    meta['duelBladeTip']=((top.min(0)+top.max(0))*.5).tolist()
     geos['duelSword']={key:append(packed,value,key) for key,value in fields.items()}
     (OUT/(name+'-mesh.bin')).write_bytes(packed)
     path.write_text(json.dumps(meta,separators=(',',':'))+'\n')

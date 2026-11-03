@@ -42,7 +42,9 @@ for(const name of ['knight','viking','ranger']){
       const frame = clip.start + Math.round(impact * (clip.frames-1));
       const socket = (frame * meta.bones + meta.bones-3) * 32;
       const element = i => DataUtils.fromHalfFloat(poses.readUInt16LE(socket + i*2));
-      const tip = name === 'ranger' ? [.29,1.32] : [0,1.42];
+      const tip = meta.duelBladeTip;
+      assert.ok(tip.length===3 && tip.every(Number.isFinite));
+      if (name==='ranger') assert.ok(tip[0]<-.2, 'Kilij tip must sweep toward the spine in grip space');
       const x = element(0)*tip[0] + element(4)*tip[1] + element(12);
       const z = element(2)*tip[0] + element(6)*tip[1] + element(14);
       assert.ok(Math.abs(x)<.035 && z>1, name+' '+motion+' missed the forward impact line');

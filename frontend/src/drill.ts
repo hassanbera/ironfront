@@ -91,7 +91,7 @@ const camera = new T.PerspectiveCamera(40, 1, 0.1, 160);
 camera.position.set(6, 5.4, 14.5);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1, 0);
-if (duel) camera.position.set(.6, 2.35, 6.1);
+if (duel) camera.position.set(0, 2.35, 6.1);
 controls.minDistance = 3;
 controls.maxDistance = 65;
 controls.maxPolarAngle = Math.PI * 0.48;
@@ -206,7 +206,6 @@ function animate(now: number) {
         y: 0,
         z,
         facing: duel ? (i === 0 ? 1 : -1) * (sparring ? Math.PI/2 : .80) : 0,
-        size: duel && i === 0 ? 1.16 : 1,
         color: colors[owner],
         motion: shownAction,
         phase: shownPhase,

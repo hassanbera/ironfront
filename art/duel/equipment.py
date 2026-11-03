@@ -38,10 +38,15 @@ class Equipment:
         self.shaft([(-.27,.046,.044,0),(-.19,.067,.058,0),(.13,.054,.046,0)],1,(.32,.17,.10))
         self.shaft([(-.30,.025,.024,0),(-.26,.084,.059,-.012),(-.20,.065,.053,-.008)],7)
         self.shaft([(.105,.16,.046,0),(.139,.23 if turk else .20,.05,0),(.177,.13,.045,0)],7 if turk else 2)
-        stations = ([(.15,.066,.031,0),(.54,.064,.027,.018),(.90,.082,.024,.08),
-                     (1.13,.094,.020,.16),(1.32,.005,.005,.29)] if turk else
+        # Grip +Y points towards the opponent; in the ready pose local -X is up.
+        # The thick spine follows the concave side, with the edge on the convex side.
+        stations = ([(.15,.059,.028,0),(.42,.055,.025,-.004),(.70,.058,.024,-.021),
+                     (.91,.062,.022,-.056),(1.08,.079,.020,-.11),
+                     (1.20,.072,.017,-.17),(1.28,.042,.012,-.221),
+                     (1.34,.002,.002,-.268)] if turk else
                     [(.15,.10,.036,0),(.28,.088,.034,0),(.9,.065,.025,0),(1.24,.046,.019,0),(1.42,.003,.003,0)])
-        rings=[[(c-w,y,0),(c,y,d),(c+w,y,0),(c,y,-d)] for y,w,d,c in stations]
+        rings=[[(c-w,y,0),(c-w*.54 if turk else c,y,d),(c+w,y,0),
+                (c-w*.54 if turk else c,y,-d)] for y,w,d,c in stations]
         self.bands(self.sword,rings,2,(.87,.92,.98))
         # Shield front faces +Z. The reverse and edge are closed surfaces too.
         if turk:

@@ -96,7 +96,7 @@ def run(out, source_dir):
             samples=(51 if model=='ranger' else 41) if motion in CUTS else base['frames']
             contact=CUTS[motion][1] if motion in CUTS else 0
             if motion in ('slash','backslash'):
-                tip=[.29,1.32,0,1] if model=='ranger' else [0,1.42,0,1]
+                tip=[*meta['duelBladeTip'],1]
                 sweep=atlas[base['start']:base['start']+base['frames'],-3].transpose(0,2,1)@tip
                 # The curved tip of the kilij crosses at a different source frame.
                 for k,(left,right) in enumerate(zip(sweep,sweep[1:])):

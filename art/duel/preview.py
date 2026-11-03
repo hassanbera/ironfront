@@ -94,8 +94,8 @@ def build_preview(source, destination, workshop):
         for track in list(rig.animation_data.nla_tracks): rig.animation_data.nla_tracks.remove(track)
         rig.animation_data.action=clips['blockHit' if side<0 else 'slash']
         actions.update(clips.values())
-        scale=2.15/meta['height']*(1.16 if side<0 else 1)
-        rig.scale=(scale*.92,scale*.95,scale*1.16);rig.location.x=side*1.03
+        scale=json.loads((OUT.parents[2]/'src/figure-scale.json').read_text())
+        rig.scale=(scale['x'],scale['z'],scale['y']);rig.location.x=side*1.03
         rig.rotation_mode='XYZ'
         rig.rotation_euler.z=-.48
         rig.hide_set(True)
