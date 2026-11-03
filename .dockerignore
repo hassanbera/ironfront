@@ -2,6 +2,7 @@
 **/dist
 **/dist-*
 .git
+art/
 .vercel
 *.exe
 *.zip

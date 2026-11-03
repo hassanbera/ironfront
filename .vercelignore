@@ -1,6 +1,7 @@
 .git
 work
 docs
+art
 scripts
 deploy
 Dockerfile

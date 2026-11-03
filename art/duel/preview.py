@@ -70,6 +70,17 @@ def add_mesh(scene,rig,kind,fields,blob,slots,mat):
             if w>0:groups[slots[j][0]].add([i],w,'ADD')
     arm=obj.modifiers.new('Pose','ARMATURE');arm.object=rig
 
+def frame_workshop(scene):
+    scene.camera.data.lens=40
+    if 'Studio floor' not in scene.objects:
+        mesh=bpy.data.meshes.new('Studio floor')
+        mesh.from_pydata([(-50,-50,-.04),(50,-50,-.04),(50,50,-.04),(-50,50,-.04)],[],[(0,1,2,3)])
+        floor=bpy.data.objects.new('Studio floor',mesh)
+        scene.collection.objects.link(floor)
+        surface=bpy.data.materials.new('Slate')
+        surface.diffuse_color=(.09,.105,.10,1)
+        mesh.materials.append(surface)
+
 def build_preview(source, destination, workshop):
     scene=bpy.data.scenes.new("IRONFRONT - Duel")
     bpy.context.window.scene=scene
@@ -96,6 +107,7 @@ def build_preview(source, destination, workshop):
         light=bpy.data.objects.new(name,data);scene.collection.objects.link(light);light.location=loc;aim(light,(0,0,1))
     scene.world=bpy.data.worlds.new('Workshop');scene.world.color=(.18,.19,.2)
     scene.render.resolution_x=1280;scene.render.resolution_y=720
+    frame_workshop(scene)
     scene.frame_start=0;scene.frame_end=26;scene.frame_set(11)
     for frame,label in [(0,'Ready'),(6,'Load'),(11,'Contact'),(16,'Follow-through'),(26,'Guard')]:
         scene.timeline_markers.new(label,frame=frame)
