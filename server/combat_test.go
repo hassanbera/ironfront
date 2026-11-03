@@ -158,8 +158,9 @@ func TestCrowdGridClearsVacatedCellsAndOwnerMasks(t *testing.T) {
 	if g.hasMeleeContact(a) {
 		t.Fatal("stale enemy in vacated cell")
 	}
-	for _, v := range []float64{-1e6, -99, -96, -95.9, -3, 0, 95.9, 96, 1e6} {
-		want := int(clamp(math.Floor((v+96)/3), 0, 63))
+	edge := float64(crowdGridN) * 1.5
+	for _, v := range []float64{-1e6, -edge - 3, -edge, -edge + .1, -3, 0, edge - .1, edge, 1e6} {
+		want := int(clamp(math.Floor((v+edge)/3), 0, crowdGridN-1))
 		if crowdCell(v, 0)%crowdGridN != want {
 			t.Fatal("grid clamp changed")
 		}

@@ -164,7 +164,7 @@ func TestPartialReinforcementAtBaseOnly(t *testing.T) {
 	if s.Alive != 22 {
 		t.Fatal("replenished outside base")
 	}
-	s.X, s.Z = -56, -56
+	s.X, s.Z = g.Bases[0].X+10, g.Bases[0].Z+10
 	g.reinforce()
 	if s.Alive != 25 {
 		t.Fatal("base did not replenish casualties")

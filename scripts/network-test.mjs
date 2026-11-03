@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const maps=JSON.parse(readFileSync(new URL('../server/rules.json',import.meta.url),'utf8')).maps;
 const url=process.env.TEST_WS_URL||'ws://127.0.0.1:8787/ws';
 const peers=[];
 function peer(hello){return new Promise((resolve,reject)=>{const ws=new WebSocket(url);const p={ws,state:null,welcome:null,errors:[],snapshots:0,waiters:[]};peers.push(p);const timeout=setTimeout(()=>reject(new Error('Handshake timeout')),5000);ws.addEventListener('open',()=>ws.send(JSON.stringify(hello)));ws.addEventListener('error',reject);ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.type==='welcome'){clearTimeout(timeout);p.welcome=m;resolve(p)}if(m.type==='error'){p.errors.push(m.message);if(!p.welcome){clearTimeout(timeout);ws.close();resolve(p)}}if(m.type==='state'){p.state=m;p.snapshots++;for(const w of p.waiters)w();}});ws.addEventListener('close',()=>{if(!p.welcome){clearTimeout(timeout);resolve(p)}})})}
@@ -15,7 +17,8 @@ try{
   assert.equal(p.state.crowd.length,400);
   const keys=new Set(p.state.crowd.map(body=>body[0]));assert.equal(keys.size,400);
   for(const s of p.state.squads){assert.equal(s.slots.length,s.alive);for(const slot of s.slots)assert.ok(keys.has(s.id*32+slot));}
-  for(const [key,x,z] of p.state.crowd){assert.ok(Number.isInteger(key)&&Number.isInteger(x)&&Number.isInteger(z));assert.ok(Math.abs(x)<=8500&&Math.abs(z)<=8500);}
+  const limit=(maps[p.state.map].size/2-5)*100;
+  for(const [key,x,z] of p.state.crowd){assert.ok(Number.isInteger(key)&&Number.isInteger(x)&&Number.isInteger(z));assert.ok(Math.abs(x)<=limit&&Math.abs(z)<=limit);}
  }
  const owned=a.state.squads.find(s=>s.owner===0),enemy=a.state.squads.find(s=>s.owner===1);const oldX=owned.x,oldZ=owned.z;const bodyKey=owned.id*32+owned.slots[0],oldBody=a.state.crowd.find(body=>body[0]===bodyKey);send(a,{type:'order',ids:[owned.id,enemy.id],order:'move',x:-30,z:-30});
  await until(d,s=>s?.squads.find(x=>x.id===owned.id).order==='move');assert.equal(d.state.squads.find(x=>x.id===enemy.id).order,'hold');await until(a,s=>Math.hypot(s.squads.find(x=>x.id===owned.id).x-oldX,s.squads.find(x=>x.id===owned.id).z-oldZ)>2);
