@@ -41,6 +41,10 @@ type MapSpec struct {
 	Obstacles                               []Obstacle
 }
 type Rules struct {
+	SwordChain struct {
+		Steps                [3]struct{ Duration, Impact float64 }
+		Recovery, LinkWindow float64
+	}
 	Combat   struct{ MeleeCycle, MeleeDuration, RangedCycle, RangedDuration, ImpactFraction, ReleaseFraction, ProjectileSpeed float64 }
 	Factions []FactionSpec
 	Heroes   []HeroSpec
@@ -151,6 +155,7 @@ type Hero struct {
 	Respawn        float64      `json:"respawn"`
 	AttackAt       float64      `json:"attackAt"`
 	AttackKind     int          `json:"attackKind"`
+	SwordChain     bool         `json:"swordChain,omitempty"`
 	AttackDuration float64      `json:"attackDuration"`
 	AttackImpact   float64      `json:"attackImpact"`
 	ImpactAt       float64      `json:"impactAt"`
@@ -175,6 +180,7 @@ type Hero struct {
 	PendingSkill   bool         `json:"-"`
 	hitEpoch       uint64
 	Combo          int `json:"-"`
+	queuedCut      bool
 }
 type HeroInput struct {
 	X      float64 `json:"x"`

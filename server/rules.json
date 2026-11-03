@@ -1,5 +1,6 @@
 {
   "combat":{"meleeCycle":0.9,"meleeDuration":0.82,"rangedCycle":1.2,"rangedDuration":1.05,"impactFraction":0.45,"releaseFraction":0.6,"projectileSpeed":35},
+  "swordChain":{"steps":[{"duration":0.45,"impact":0.40},{"duration":0.35,"impact":0.38},{"duration":0.55,"impact":0.46}],"recovery":0.51,"linkWindow":0.45},
   "factions": [
     {"id":0,"name":"Knights","title":"Çelikten irade","color":"#bec9cd","accent":"#e6c887","emblem":"shield","description":"Zırhlı hatlar ve yıkıcı süvari hücumu. Açık arazide güçlü; ormanda ve kuşatıldığında kırılgan.",
       "units":[

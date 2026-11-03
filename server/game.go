@@ -258,6 +258,9 @@ func (g *Game) command(owner int, c Command) error {
 	case "hero":
 		h := g.hero(owner)
 		if h != nil {
+			if h.Active != c.Active {
+				h.endSwordChain()
+			}
 			h.Active = c.Active
 			h.Input = HeroInput{Facing: h.Facing}
 			h.Block = false

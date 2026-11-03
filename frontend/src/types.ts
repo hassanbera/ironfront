@@ -92,6 +92,7 @@ export interface Hero {
   attackAt: number;
   dodgeUntil: number;
   attackKind?: number;
+  swordChain?: boolean;
   attackDuration?: number;
   attackImpact?: number;
   impactAt?: number;

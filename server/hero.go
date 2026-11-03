@@ -29,6 +29,9 @@ func (g *Game) moveHeroes(dt float64) {
 		if h.Active {
 			h.Facing = h.Input.Facing
 			h.Block = h.Input.Block && h.Stamina > 3 && g.Time >= h.DodgeUntil
+			if h.Block {
+				h.endSwordChain()
+			}
 			if h.Block && h.PendingStrike > 0 {
 				h.PendingStrike = 0
 				h.AttackAt = 0
@@ -61,6 +64,12 @@ func (g *Game) moveHeroes(dt float64) {
 			h.PendingStrike = 0
 			g.resolveHeroStrike(h, h.PendingSkill)
 		}
+		if h.queuedCut && g.Time >= h.AttackReady {
+			h.queuedCut = false
+			if h.Active {
+				g.heroStrike(h, false)
+			}
+		}
 		if !h.Block {
 			h.Stamina = math.Min(100, h.Stamina+dt*16)
 		}
@@ -80,6 +89,11 @@ func (g *Game) heroAction(owner int, action string) {
 	}
 	switch action {
 	case "attack":
+		if h.SwordChain && h.AttackKind < len(rules.SwordChain.Steps)-1 && !h.Block && !h.Input.Block &&
+			g.Time >= h.AttackAt+h.AttackDuration*.22 && g.Time < h.AttackReady {
+			h.queuedCut = true
+			return
+		}
 		g.heroStrike(h, false)
 	case "jump":
 		if h.Y == 0 {
@@ -100,6 +114,7 @@ func (g *Game) heroAction(owner int, action string) {
 			}
 			h.PendingStrike = 0
 			h.AttackAt = 0
+			h.endSwordChain()
 			h.Block = false
 		}
 	case "skill":
@@ -126,16 +141,42 @@ func (g *Game) heroStrike(h *Hero, skill bool) {
 	if h.Class == 2 {
 		h.AttackDuration = 0.72
 	}
-	if g.Time-h.AttackAt > 1.2 {
-		h.Combo = 0
+	impact, recovery := .42, 0.0
+	if h.Active && h.Class != 2 && !skill {
+		step := 0
+		if h.SwordChain && g.Time <= h.AttackReady+rules.SwordChain.LinkWindow {
+			step = (h.AttackKind + 1) % len(rules.SwordChain.Steps)
+		}
+		tempo := h.AttackDuration / .62
+		beat := rules.SwordChain.Steps[step]
+		h.AttackKind, h.AttackDuration, impact = step, beat.Duration*tempo, beat.Impact
+		if step == len(rules.SwordChain.Steps)-1 {
+			recovery = rules.SwordChain.Recovery * tempo
+		}
+		h.SwordChain = true
+		h.queuedCut = false
+	} else {
+		h.endSwordChain()
+		if g.Time-h.AttackAt > 1.2 {
+			h.Combo = 0
+		}
+		h.AttackKind = h.Combo % 3
+		h.Combo++
 	}
-	h.AttackKind = h.Combo % 3
-	h.Combo++
-	h.AttackReady = g.Time + h.AttackDuration
+	h.AttackReady = g.Time + h.AttackDuration + recovery
 	h.AttackAt = g.Time
-	h.AttackImpact = g.Time + h.AttackDuration*0.42
+	h.AttackImpact = g.Time + h.AttackDuration*impact
 	h.PendingStrike = h.AttackImpact
 	h.PendingSkill = skill
+}
+
+func (h *Hero) endSwordChain() {
+	if h.SwordChain {
+		h.AttackAt = 0
+		h.PendingStrike = 0
+	}
+	h.SwordChain = false
+	h.queuedCut = false
 }
 
 func (g *Game) heroImpact(h *Hero, x, z, damage float64, kind string) {
@@ -246,6 +287,7 @@ func (g *Game) damageHero(h *Hero, damage, x, z float64) {
 	if h.HP == 0 {
 		h.PendingStrike = 0
 		h.AttackAt = 0
+		h.endSwordChain()
 		h.Respawn = g.Time + 20
 		h.Block = false
 		h.Input = HeroInput{}

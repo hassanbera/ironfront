@@ -159,6 +159,7 @@ func (s *Server) serveWS(w http.ResponseWriter, r *http.Request) {
 			if h := p.room.game.hero(p.owner); h != nil {
 				h.Input = HeroInput{}
 				h.Active = false
+				h.endSwordChain()
 			}
 			p.room.lastActive = time.Now()
 		}
