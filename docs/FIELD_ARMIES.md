@@ -1,5 +1,25 @@
 # Birlik görünümleri, harita ve savaşa katılım
 
+## Güncel haritalar ve açılış temposu
+
+Sınır Vadisi, Kızıl Geçit ve Kuzey Surları artık 1.536 × 1.536 birim. Önceki 252 × 252 sürüme göre yürünebilir arenanın dış karesi yaklaşık 37 kat alan kaplıyor. Ana üslerin koordinatları her iki eksende ±624, dört karakolunki ±260. Genişleyen yaklaşım yollarında orman, sırt, geçit ve bataklıklar var. Birimlerin hızı ve silah menzili kendi sınıf değerlerini kullanıyor.
+
+Aşağıdaki süreler aynı kılıçlı Knights ağır piyadesine doğar doğmaz tek bir yürüyüş emri verilerek ölçüldü. Her haritanın dört başlangıç köşesi ayrı sınandı. Merkez için hedefe 1 birim yaklaşmak, ele geçirme alanına girmek için 12 birimlik sınırı aşmak esas alındı.
+
+| Harita | Önceki ilk karakol merkezi | Yeni ele geçirme alanına giriş | Yeni ilk karakol merkezi |
+|---|---:|---:|---:|
+| Sınır Vadisi | 19 sn | 2 dk 30 sn | 2 dk 34 sn |
+| Kızıl Geçit | 19 sn | 2 dk 37 sn | 2 dk 41 sn |
+| Kuzey Surları | 20 sn | 2 dk 41 sn | 2 dk 44–45 sn |
+
+İki gerçek WebSocket istemcisiyle açılan Sınır Vadisi maçında ağır piyade merkeze 153,6 saniyede ulaştı ve karakol 159,2 saniyede el değiştirdi. Komşu rakip üssün 16 birim önündeki kuşatma konumuna doğrudan yürüyüş, haritaya ve başlangıç köşesine göre 6 dk 13–18 sn sürdü. [Yürüyüş ve engel testleri](../server/march_test.go).
+
+Puanla bitiş sınırı 40 dakika. Son rakibin elenmesi maçı daha erken bitirir. Üç haritada dörder botla yapılan tam simülasyonlarda bütün botlar en az bir karakol aldı, üç maç da süre sonunda puanla sonuçlandı. Botların ilk karakollarını ele geçirme süresi seçtikleri birlik ve rotaya göre 79–164 saniye arasında değişti. [Tam maç testi](../server/game_test.go).
+
+Geniş genel görünüm, minimapten uzak bir noktaya sağ tık emri, ana üsse dönüş, hero moduna giriş ve dört WebSocket istemcisiyle hareket eşlemesi yerelde kontrol edildi.
+
+Önceki 252 birimlik haritayla karşılaştırma, aynı 1440 × 900 Intel UHD Graphics tarayıcı oturumunda ve yüksek kalitede yapıldı. Her sahnede yeni–eski–eski–yeni sırasıyla koşuldu. Her koşunun 180 ısınma karesi ve 419 ölçülen kare aralığı vardı. 400 askerli hero tekrarında ortalama FPS 53,95 → 52,00, kare p95 ortalaması 25,10 → 29,15 ms oldu. 800 askerli RTS tekrarında 55,10 → 53,80 FPS ve iki sürümde de 25,05 ms kare p95 ölçüldü. [Sekiz koşunun ham ölçümleri](strategic-field-replay.json).
+
 Birlik Talimi'nde faction seçildiğinde o ordunun dört sınıfı gösterilir. Vikinglerin mavi yün kıyafeti, burun korumalı miğferi ve post omuzluğu, Arapların sarığı, omuz örtüsü, süvari yüz örtüsü ve cirit takımı ortak iskeletlere oturur. Dört ordunun okçuları sadak, ok ve taşıma kayışı taşır. Talimde biniciler kıyafet incelemesi için yerde gösterilir. Maçta mevcut bineklerini kullanırlar. Hareket atlaslarının üçü de önceki sürümle bayt düzeyinde aynıdır.
 
 ## Yakın dövüş
@@ -16,7 +36,7 @@ Total War Academy emirlerin birlik düzeyinde verildiğini ve süvariyle yan sal
 
 İlk test hedefin canını her vuruş öncesinde yeniler. Böylece her dizilim aynı sayıda savunmacıyla sınanır. Ayrı bir normal kayıplı 25’e 25 denemesinde 30 saniyede 25 Knights ve 21 Viking askeri geçerli temasa katıldı. Savunma emrine dönme, merkezlerin arasındaki kayalığın yanından temas, altı menzilli sınıfın üçer dizilimi ve 4 WebSocket istemcisi de test edildi. [Katılım testleri](../server/engagement_test.go).
 
-## Harita ve tempo
+## Önceki 252 × 252 sürümünün harita ve tempo ölçümü
 
 Üç haritanın kenarı 180’den 252’ye çıktı. Üsler, karakollar, arazi bölgeleri, engeller, yol bulma, çarpışma alanı ve minimap yeni boyuta göre yerleştirildi. Testte aynı Knights ağır piyade birliği, aynı dizilim ve hızla doğuş noktasından kendi karakolunun merkezine yürütüldü. İşgal sayacı yürüyüş süresine dahil edilmedi.
 

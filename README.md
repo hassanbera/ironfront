@@ -107,7 +107,7 @@ go run .
 - Her sınıfın farklı bekleme süresi vardır. Kayıplar, süreleri dolduktan sonra dost üsse 28 birim mesafede ve 3 saniye çatışma dışında yenilenir. Tamamen düşen birlik faal ana üste yeniden doğar.
 - Ön/yan/arka yön hesabı, zırh, sınıf karşılıkları ve dizilim çarpanları sunucudadır. Yandan/arkadan darbe alan birlik, sınıfa özgü **fark etme süresi** boyunca dönememeye başlar. Aynı saldırgan bu süreyi sürekli sıfırlayamaz.
 - Kahramanda 3 sınıf: **Muhafız, Düellocu, Akıncı**. Faction rengi/kimliği korunur. Kahraman 20 saniyede ana üste döner.
-- Son kalan faction kazanır. 20 dakikada bitmezse `kapasite × 4 + düşürülen asker` puanı kazanır; eşitlik beraberliktir.
+- Son kalan faction kazanır. 40 dakikada bitmezse `kapasite × 4 + düşürülen asker` puanı kazanır; eşitlik beraberliktir.
 
 ## Kontroller
 

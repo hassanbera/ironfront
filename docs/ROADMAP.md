@@ -4,6 +4,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Tamamlanan ilk sürüm
 
+- [x] Üç haritada 1.536 birimlik cephe, 2–3 dakikalık ağır piyade açılışı ve 40 dakikalık maç sınırı. [Dört başlangıç köşesinin ölçümleri](FIELD_ARMIES.md#güncel-haritalar-ve-açılış-temposu).
+
 - [x] Dört factionun birlik kıyafetleri ve sadakları, 252 birimlik üç harita, yakın dövüşte arka safların katılımı ve menzilli sıraların atış mesafesi. [Önce/sonra denemeleri](FIELD_ARMIES.md).
 
 - [x] Kılıçlı herolarda tıklamayla bağlanan sağ kesiş, dönüş kesişi ve saplama. İkili talimde çift ve üçlü seri seçenekleri. [Kontroller ve süreler](DUEL_VALIDATION.md#kılıç-serileri).
