@@ -58,7 +58,7 @@ def body_surface(name, body, blob):
     uv=np.column_stack(atlas_uv(tiles,u,v))
     return uv,np.column_stack((rgb,np.zeros(len(rgb))))
 
-def fabric_body(name, source, blob, tier):
+def exposed_body(name, source, blob):
     """Keep the articulated face, gloves and feet. Replace the original outfit."""
     uv, paint = body_surface(name, source, blob)
     joints = channel(blob, source, 'skinIndex')[:,0]
@@ -77,8 +77,7 @@ def fabric_body(name, source, blob, tier):
         else:
             values=uv if key=='uv' else paint if key=='paint' else channel(blob,source,key)
             body[key]=values[vertices].ravel()
-    garment=Garments(tier).make(name=='ranger')
-    return merge(body,garment)
+    return body
 
 def merge(a,b):
     offset=len(a['position'])//3
@@ -90,7 +89,7 @@ def build_mesh(name):
     geos=meta['geometries']
     raw=(OUT/(name+'-mesh.bin')).read_bytes()
     # Start at the end of the base model on every rebuild.
-    original=[g for key,g in geos.items() if not key.startswith('duel')]
+    original=[g for key,g in geos.items() if not key.startswith(('duel','field'))]
     end=max(f['offset']+f['length']*4 for g in original for f in g.values())
     packed=bytearray(raw[:end])
     # Last three pose slots are right grip, left grip and bowstring (base baker).
@@ -102,7 +101,7 @@ def build_mesh(name):
     meta['duelBladeTip']=((top.min(0)+top.max(0))*.5).tolist()
     geos['duelSword']={key:append(packed,value,key) for key,value in fields.items()}
     for tier, suffix in [('near',''),('mid','Mid'),('far','Far')]:
-        costume=fabric_body(name,geos['body'+suffix],raw,tier)
+        costume=merge(exposed_body(name,geos['body'+suffix],raw),Garments(tier).make(name=='ranger'))
         if tier=='far':
             costume=merge(costume,Equipment(joint,joint+1).make(name=='ranger',far=True))
         geos['duelBody'+suffix]={key:append(packed,value,key) for key,value in costume.items()}
@@ -114,6 +113,8 @@ def build():
     generate(OUT)
     for name in ('knight','ranger'):
         build_mesh(name)
+    from field_kit import build_kits
+    build_kits(OUT,WIDTHS,exposed_body,merge,append)
 
 if __name__=='__main__':
     build()

@@ -39,6 +39,7 @@ export type Character = {
   id: string;
   model: string;
   weapon: string;
+  kit?: string;
   x: number;
   y: number;
   z: number;
@@ -216,7 +217,7 @@ export class Characters {
         depth.customProgramCacheKey = () => "ironfront-rigged-shadow-v1";
         let duelMaterial: T.MeshStandardMaterial | undefined;
         let distantCloth: T.MeshLambertMaterial | undefined;
-        if (meta.geometries.duelBody) {
+        if (meta.geometries.duelBody || meta.geometries.fieldNorse) {
           duelMaterial = new T.MeshStandardMaterial({
             map: color, roughnessMap: finish, metalnessMap: finish,
             roughness: 1, metalness: 1, normalMap: normal,
@@ -275,8 +276,9 @@ export class Characters {
             1,
           ).setUsage(T.DynamicDrawUsage);
           geo.setAttribute("visibility", visibility);
-          const surface = kind === "duelBodyMid" || kind === "duelBodyFar"
-            ? distantCloth! : kind.startsWith("duel") ? duelMaterial! : material;
+          const fitted = kind.startsWith("field") || kind.startsWith("duel");
+          const surface = !fitted ? material : kind.endsWith("Mid") || kind.endsWith("Far")
+            ? distantCloth! : duelMaterial!;
           const mesh = new T.InstancedMesh(geo, surface, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -365,7 +367,7 @@ export class Characters {
     const duel = actor.weapon === "duelSword";
     const body = duel
       ? detail === "body" ? "duelBody" : detail === "bodyMid" ? "duelBodyMid" : "duelBodyFar"
-      : detail;
+      : actor.kit ? actor.kit + (detail === "body" ? "" : detail === "bodyMid" ? "Mid" : "Far") : detail;
     // The distant costume already includes the socket-bound sword and shield.
     const parts = body === "duelBodyFar" ? 1 : 2;
     for (let part = 0; part < parts; part++) {
@@ -430,6 +432,10 @@ export function outfit(owner: number, kind: string, heroClass = -1) {
   const ranged = kind === "archer" || kind === "horseArcher" || heroClass === 2;
   const duelSword = kind === "sword" && ((owner === 3 && heroClass === 0) || (owner === 0 && heroClass < 0));
   return {
+    kit: duelSword ? undefined : owner === 1 ? (ranged ? "fieldNorseBow" : kind === "berserker" ? "fieldNorseFur" : "fieldNorse")
+      : owner === 2 ? (ranged ? "fieldArabBow" : kind === "camel" ? "fieldArabCamel" : kind === "javelin" ? "fieldArabJavelin" : "fieldArab")
+      : owner === 3 ? (ranged ? "fieldTurkBow" : "fieldTurk")
+      : ranged ? "fieldLongbow" : "fieldKnight",
     model:
       kind === "axe" || kind === "berserker"
         ? "viking"

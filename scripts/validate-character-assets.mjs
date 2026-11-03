@@ -37,6 +37,13 @@ for(const name of ['knight','viking','ranger']){
     data[kind]=fields.index.length/3;
   }
   assert.ok(data.bodyFar<data.bodyMid&&data.bodyMid<data.body);
+  const kits = {knight:['Knight'],viking:['Norse','NorseBow','NorseFur'],
+    ranger:['Longbow','Arab','ArabCamel','ArabJavelin','ArabBow','Turk','TurkBow']}[name];
+  for (const kit of kits) {
+    const label='field'+kit;
+    assert.ok(data[label]>data[label+'Mid'] && data[label+'Mid']>data[label+'Far'] && data[label+'Far']>0,
+      label+' needs three decreasing LODs');
+  }
   if (name === 'knight' || name === 'ranger') {
     assert.ok(data.duelBodyMid < data.duelBody, 'Mid costume should reduce geometry');
     assert.ok(data.duelBodyFar < data.duelBodyMid + data.duelSword, 'Far figure includes its weapon');

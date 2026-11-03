@@ -60,7 +60,7 @@ class Garments(Surface):
         for (x,y,z),(X,Y,Z) in zip(path,path[1:]):
             self.face(binding,[(x-width,y,z),(x+width,y,z),(X+width,Y,Z),(X-width,Y,Z)],tile,tint)
 
-    def sleeves(self,turk):
+    def sleeves(self,turk,cloth=None):
         rings=[(.16,.144),(.28,.154),(.42,.119),(.51,.116),(.64,.102),(.78,.078)]
         if self.tier=='far': rings=[rings[i] for i in (0,3,5)]
         for sign,upper in [(1,4),(-1,9)]:
@@ -75,6 +75,8 @@ class Garments(Surface):
                 a,b=ring(x,r),ring(X,R)
                 tile= (KAFTAN if x<.51 else STEEL) if turk else (MAIL if x<.64 else LEATHER)
                 tint=(.73,.74,.72) if tile==STEEL else ((.22,.14,.095) if tile==LEATHER else (1,1,1))
+                if cloth is not None:
+                    tile,tint=(CLOTH,cloth) if x<.51 else (LEATHER,(.23,.12,.065))
                 for i in range(n):
                     k=(i+1)%n
                     pts=[a[i],a[k],b[k],b[i]]

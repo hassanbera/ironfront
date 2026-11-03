@@ -138,12 +138,10 @@ chars
     document.querySelector("#error")!.textContent = String(e);
     console.error(e);
   });
-const kinds = ["sword", "spear", "archer", "axe", "berserker"];
-const labels = ["KILIÇ / KALKAN", "MIZRAK", "YAY", "BÜYÜK BALTA", "ÇİFT BALTA"];
-const nodes = labels.map((t) => {
+const nodes = rules.factions[0].units.map((unit) => {
   const el = document.createElement("div");
   el.className = "unit-label";
-  el.textContent = t;
+  el.textContent = unit.name;
   document.body.append(el);
   return el;
 });
@@ -190,9 +188,10 @@ function animate(now: number) {
     if (poseLabel.textContent !== title) poseLabel.textContent = title;
   }
   if (loaded)
-    for (let i = 0; i < (duel ? 2 : crowd ? 400 : 5); i++) {
-      const kind = duel ? "sword" : kinds[i % 5],
-        owner = duel ? (i === 0 ? 3 : 0) : crowd ? Math.floor(i / 100) : faction,
+    for (let i = 0; i < (duel ? 2 : crowd ? 400 : 4); i++) {
+      const owner = duel ? (i === 0 ? 3 : 0) : crowd ? Math.floor(i / 100) : faction,
+        unit = rules.factions[owner].units[i % 4],
+        kind = duel ? "sword" : unit.kind,
         gear = outfit(owner, kind, duel && i === 0 ? 0 : -1),
         action = motion === "attack" ? gear.attack : motion;
       const duration = chars.duration(gear.model, action),
@@ -242,7 +241,7 @@ function animate(now: number) {
         }
       }
       const spacing = combo ? 1.74 - 2 * approach : 2.15;
-      const x = duel ? (i - .5) * spacing : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
+      const x = duel ? (i - .5) * spacing : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 1.5) * 2.35,
         z = crowd ? (Math.floor(i / 20) - 9.5) * 1.45 : 0;
       chars.draw({
         id: String(i),
@@ -258,6 +257,7 @@ function animate(now: number) {
         loop,
       });
       if (!crowd) {
+        if (!duel && nodes[i].textContent !== unit.name) nodes[i].textContent = unit.name;
         const point = new T.Vector3(x, 2.7, z).project(camera);
         nodes[i].style.left = (point.x * 0.5 + 0.5) * innerWidth + "px";
         nodes[i].style.top = (-point.y * 0.5 + 0.5) * innerHeight + "px";
