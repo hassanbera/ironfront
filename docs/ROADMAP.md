@@ -4,6 +4,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Tamamlanan ilk sürüm
 
+- [x] Kılıçlı herolarda tıklamayla bağlanan sağ kesiş, dönüş kesişi ve saplama. İkili talimde çift ve üçlü seri seçenekleri. [Kontroller ve süreler](DUEL_VALIDATION.md#kılıç-serileri).
+
 - [x] Turks kılıç-kalkan Muhafızı ve Knights ağır piyadesi için ortak anatomik ölçek, düzeltilmiş kılıç eğrisi ve üç mesafe seviyesinde özgün kıyafetler. [İkili talim ve ölçümler](DUEL_VALIDATION.md).
 
 - [x] Go otoriter sunucu; dört oyunculu oda, host başlangıcı, bot antrenmanı, kısa kopmada token ile geri dönüş.

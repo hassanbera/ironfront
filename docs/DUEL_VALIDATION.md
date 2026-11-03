@@ -2,7 +2,15 @@
 
 İkili çalışmayı Birlik Talimi'ndeki **Turks ve Knights · İkili talim** bağlantısı açar. **Saldır** hareketi iki karakteri sırayla saldırı ve kalkan karşılamasıyla oynatır. **Duraklat** ve fareyle döndürme, temas pozunu iki açıdan incelemeye yarar. Normal maçta Turks tarafında Muhafız sınıfını veya Knights kılıç-kalkanlı ağır piyadesini seç.
 
-[Blender çalışma sahnesi](../art/duel/IRONFRONT-Duel.blend) iki armature, 18 düzenlenebilir Action ve paketlenmiş malzeme haritaları içerir. KayKit kaynakları, lisans ve yeniden üretme komutları [asset kaydında](../frontend/public/assets/characters/SOURCES.md). Blender MCP 2.2.6, Blender 4.0.2 ile localhost üzerinden sahne okuma ve Python çalıştırma çağrılarıyla doğrulandı.
+[Blender çalışma sahnesi](../art/duel/IRONFRONT-Duel.blend) iki iskelet, 20 düzenlenebilir hareket ve paketlenmiş malzeme haritaları içerir. KayKit kaynakları, lisans ve yeniden üretme komutları [asset kaydında](../frontend/public/assets/characters/SOURCES.md).
+
+## Kılıç serileri
+
+İkili talimde **Çift kesiş** sağ alttan yükselip soldan dönen iki kesişi gösterir. **Üçlü seri** aynı hareketleri öne saplamayla bitirir. İki savaşçı sırayla hücuma geçer. Hareketi duraklatıp kamerayı fareyle çevirebilirsin.
+
+Hero modunda Muhafız ve Düellocu sol tıkla vurur. İlk iki vuruşun hazırlığının ilk %22’sinden sonra bir sonraki tık saklanır. Sonraki vuruş için toparlanma bittikten sonra da 0,45 saniye vardır. Blok, kaçınma, ölüm ve hero modundan çıkış bekleyen vuruşu siler. Muhafızın kesiş, dönüş ve saplama süreleri sırasıyla 0,45, 0,35 ve 0,55 saniyedir. Son toparlanmayla birlikte tam döngü 1,86 saniye sürer. Düellocu kendi hızlı temposunu kullanır.
+
+İlk kesişte önkol ve bilek kılıç ucunun etrafında dönerek ağzı kesiş yönüne taşır. Her iki modelin parça sınırları, kılıcın yükselme yönü ve sunucunun temas anında orta hattı geçişi asset testinde kontrol edilir. Go testleri tek isabet, girdi sırası, iptal ve son toparlanmayı sınar. Talimde iki savaşçının serileri ve maçta sol tıklardan sonra üç hareket ile RTS’ye dönüş tarayıcıda kontrol edildi.
 
 ## Kıyafet ve ölçek geçişi
 
