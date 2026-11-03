@@ -23,6 +23,7 @@ type Model = {
   batches: Map<string, Batch>;
   material: T.MeshStandardMaterial;
   duelMaterial?: T.MeshStandardMaterial;
+  distantCloth?: T.MeshLambertMaterial;
   depth: T.MeshDepthMaterial;
   texture: T.DataTexture;
   atlas: T.Texture;
@@ -213,6 +214,7 @@ export class Characters {
         material.customProgramCacheKey = () => "ironfront-rigged-surface-v1";
         depth.customProgramCacheKey = () => "ironfront-rigged-shadow-v1";
         let duelMaterial: T.MeshStandardMaterial | undefined;
+        let distantCloth: T.MeshLambertMaterial | undefined;
         if (meta.geometries.duelBody) {
           duelMaterial = new T.MeshStandardMaterial({
             map: color, roughnessMap: finish, metalnessMap: finish,
@@ -221,6 +223,10 @@ export class Characters {
           });
           duelMaterial.onBeforeCompile = (s) => inject(s, true, true);
           duelMaterial.customProgramCacheKey = () => "ironfront-duel-surface-v1";
+          // At army distance the woven relief occupies less than a pixel.
+          distantCloth = new T.MeshLambertMaterial({ map: color });
+          distantCloth.onBeforeCompile = (s) => inject(s, true, true);
+          distantCloth.customProgramCacheKey = () => "ironfront-duel-distant-v1";
         }
         const model: Model = {
           meta,
@@ -232,6 +238,7 @@ export class Characters {
           batches: new Map(),
           material,
           duelMaterial,
+          distantCloth,
           depth,
           texture,
           atlas,
@@ -267,7 +274,8 @@ export class Characters {
             1,
           ).setUsage(T.DynamicDrawUsage);
           geo.setAttribute("visibility", visibility);
-          const surface = kind.startsWith("duel") ? duelMaterial! : material;
+          const surface = kind === "duelBodyMid" || kind === "duelBodyFar"
+            ? distantCloth! : kind.startsWith("duel") ? duelMaterial! : material;
           const mesh = new T.InstancedMesh(geo, surface, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -403,6 +411,7 @@ export class Characters {
       }
       model.material.dispose();
       model.duelMaterial?.dispose();
+      model.distantCloth?.dispose();
       model.depth.dispose();
       model.texture.dispose();
       model.atlas.dispose();

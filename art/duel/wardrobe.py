@@ -27,7 +27,7 @@ class Garments(Surface):
     def __init__(self, tier):
         super().__init__()
         self.tier=tier
-        self.sides={'near':20,'mid':14,'far':10}[tier]
+        self.sides={'near':20,'mid':14,'far':8}[tier]
 
     def shell(self, levels, tile, tint, binding, *, start=0, arc=math.tau, sides=None, flute=0, cap=False, cx=0):
         n=sides or self.sides
@@ -62,17 +62,18 @@ class Garments(Surface):
 
     def sleeves(self,turk):
         rings=[(.16,.144),(.28,.154),(.42,.119),(.51,.116),(.64,.102),(.78,.078)]
+        if self.tier=='far': rings=[rings[i] for i in (0,3,5)]
         for sign,upper in [(1,4),(-1,9)]:
             def arm(point):
                 x=abs(point[0])
                 if x<.52: return mix(upper,upper+1,(x-.40)/.12)
                 return mix(upper+1,upper+2,(x-.68)/.1)
-            n=8 if self.tier!='far' else 6
+            n=8 if self.tier!='far' else 5
             def ring(x,r):
                 return [(sign*x,1.107+r*math.cos(k*math.tau/n),r*.97*math.sin(k*math.tau/n)) for k in range(n)]
             for j,((x,r),(X,R)) in enumerate(zip(rings,rings[1:])):
                 a,b=ring(x,r),ring(X,R)
-                tile= (KAFTAN if j<3 else STEEL) if turk else (MAIL if j<4 else LEATHER)
+                tile= (KAFTAN if x<.51 else STEEL) if turk else (MAIL if x<.64 else LEATHER)
                 tint=(.73,.74,.72) if tile==STEEL else ((.22,.14,.095) if tile==LEATHER else (1,1,1))
                 for i in range(n):
                     k=(i+1)%n
@@ -169,14 +170,35 @@ class Garments(Surface):
         self.face(torso,[(-.047,.578,.300),(.047,.578,.300),(.047,.632,.297),(-.047,.632,.297)],GOLD)
         self.shell([(1.092,.295,.235),(1.216,.205,.185),(1.324,.221,.218)],MAIL,(.9,.91,.95),3)
 
+    def distant_armor(self,turk):
+        # Preserve the distinctive outer profiles and heraldry at army scale.
+        if turk:
+            self.shell([(.255,.36,.25),(.68,.27,.22),(1.18,.29,.22)],KAFTAN,(1,1,1),torso)
+            self.shell([(.70,.28,.23),(1.10,.31,.245)],PLATES,(1,.93,.8),torso)
+            self.shell([(1.20,.47,.40),(1.75,.47,.47)],MAIL,(.88,.9,.9),HEAD,start=.89,arc=math.tau-1.78)
+            self.shell([(1.73,.52,.54),(1.88,.52,.54)],CLOTH,RED,HEAD)
+            self.shell([(1.88,.51,.53),(2.08,.35,.38),(2.31,.014,.014)],STEEL,(.51,.58,.61),HEAD,cap=True)
+        else:
+            self.shell([(.32,.34,.235),(.65,.25,.205),(1.21,.28,.22)],MAIL,(1,1,1),torso)
+            self.tabard()
+            self.shell([(1.29,.38,.411),(1.54,.49,.50)],STEEL,(.66,.71,.75),HEAD)
+            self.shell([(1.54,.488,.495),(1.64,.49,.50)],PLAIN,BLACK,HEAD)
+            self.shell([(1.64,.50,.51),(1.98,.47,.47),(2.135,.33,.34)],STEEL,(.71,.77,.80),HEAD,cap=True)
+
     def make(self,turk):
         self.sleeves(turk)
         for cx,thigh,shin in [( .17,15,16),(-.17,19,20)]:
+            if self.tier=='far':
+                self.shell([(.09,.11,.12),(.40,.13,.13)],LEATHER,OXBLOOD if turk else (.16,.12,.093),
+                           lambda p:mix(shin,thigh,(p[1]-.18)/.13),cx=cx,sides=5)
+                continue
             self.shell([(.211,.092,.103),(.30,.123,.132),(.408,.146,.152),(.51,.129,.136)],
                        CLOTH if turk else MAIL,RED if turk else (.92,.94,.97),thigh,cx=cx,sides=8)
             self.shell([(.089,.112,.121),(.165,.118,.122),(.248,.104,.117),(.273,.119,.122)],
                        LEATHER,OXBLOOD if turk else (.16,.12,.093),shin,cx=cx,sides=8)
-        if turk:
+        if self.tier=='far':
+            self.distant_armor(turk)
+        elif turk:
             self.turk_coat()
             self.turk_helmet()
         else:

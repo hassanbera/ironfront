@@ -13,17 +13,18 @@ class Equipment(Surface):
                 k=(j+1)%len(a)
                 self.face(joint,[a[j],a[k],b[k],b[j]],tile,tint)
 
-    def shaft(self, layers, tile, tint=(1,1,1)):
-        rings = [[(cx+rx*math.cos(-k*math.tau/8),y,rz*math.sin(-k*math.tau/8))
-                  for k in range(8)] for y,rx,rz,cx in layers]
+    def shaft(self, layers, tile, tint=(1,1,1), sides=8):
+        rings = [[(cx+rx*math.cos(-k*math.tau/sides),y,rz*math.sin(-k*math.tau/sides))
+                  for k in range(sides)] for y,rx,rz,cx in layers]
         self.bands(self.sword,rings,tile,tint)
         self.face(self.sword,list(reversed(rings[0])),tile,tint)
         self.face(self.sword,rings[-1],tile,tint)
 
     def make(self,turk,far=False):
-        self.shaft([(-.27,.046,.044,0),(-.19,.067,.058,0),(.13,.054,.046,0)],1,(.32,.17,.10))
-        self.shaft([(-.30,.025,.024,0),(-.26,.084,.059,-.012),(-.20,.065,.053,-.008)],7)
-        self.shaft([(.105,.16,.046,0),(.139,.23 if turk else .20,.05,0),(.177,.13,.045,0)],7 if turk else 2)
+        sides=4 if far else 8
+        self.shaft([(-.27,.046,.044,0),(-.19,.067,.058,0),(.13,.054,.046,0)],1,(.32,.17,.10),sides)
+        if not far: self.shaft([(-.30,.025,.024,0),(-.26,.084,.059,-.012),(-.20,.065,.053,-.008)],7)
+        self.shaft([(.105,.16,.046,0),(.139,.23 if turk else .20,.05,0),(.177,.13,.045,0)],7 if turk else 2,sides=sides)
         # Grip +Y points towards the opponent; in the ready pose local -X is up.
         # The thick spine follows the concave side, with the edge on the convex side.
         stations = ([(.15,.059,.028,0),(.42,.055,.025,-.004),(.70,.058,.024,-.021),
@@ -37,11 +38,12 @@ class Equipment(Surface):
         self.bands(self.sword,rings,2,(.87,.92,.98))
         # Shield front faces +Z. The reverse and edge are closed surfaces too.
         if turk:
-            sides=12 if far else 24
+            sides=8 if far else 24
             shape=[(.44*math.cos(k*math.tau/sides),.44*math.sin(k*math.tau/sides)) for k in range(sides)]
         else:
             shape=[(.405,.42),(.25,.47),(-.25,.47),(-.405,.42),(-.39,.03),(-.32,-.22),
                    (-.18,-.42),(0,-.56),(.18,-.42),(.32,-.22),(.39,.03)]
+            if far: shape=[shape[i] for i in (0,2,3,5,7,9)]
         rings=[[(x*s,y*s,z) for x,y in shape] for s,z in [(1,.11),(1,.16),(.948,.176),(.25,.236)]]
         self.bands(self.shield,rings[:3],7 if turk else 2)
         tile=4 if turk else 5

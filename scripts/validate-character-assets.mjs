@@ -39,6 +39,7 @@ for(const name of ['knight','viking','ranger']){
   if (name === 'knight' || name === 'ranger') {
     assert.ok(data.duelBodyMid < data.duelBody, 'Mid costume should reduce geometry');
     assert.ok(data.duelBodyFar < data.duelBodyMid + data.duelSword, 'Far figure includes its weapon');
+    assert.ok(data.duelBodyFar <= 420, 'Distant armored figure including equipment exceeds its crowd budget');
     assert.ok(data.duelSword > 0 && data.duelSword < 500, 'Duel equipment triangle budget');
     for (const motion of ['slash','backslash','stab','blockHit','hit','walk','run','dodgeLeft','dodgeRight']) {
       assert.equal(meta.animations['duel_'+motion]?.duration, meta.animations[motion].duration);
