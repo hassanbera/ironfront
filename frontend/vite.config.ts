@@ -1,6 +1,15 @@
 import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+
+const characters = new URL("./public/assets/characters/", import.meta.url);
+const digest = createHash("sha256");
+for (const name of readdirSync(characters).sort()) {
+  if (/\.(bin|png|json)$/.test(name)) digest.update(readFileSync(new URL(name, characters)));
+}
 export default defineConfig({
+  define: { "import.meta.env.VITE_CHARACTER_REV": JSON.stringify(digest.digest("hex").slice(0, 16)) },
   server: {
     port: 5173,
     strictPort: true,

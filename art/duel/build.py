@@ -84,3 +84,10 @@ def build():
 
 if __name__=='__main__':
     build()
+    if '--' in sys.argv:
+        import motions
+        args=sys.argv[sys.argv.index('--')+1:]
+        rigs=motions.run(OUT,Path(args[0]))
+        if len(args)>1:
+            from preview import build_preview
+            build_preview(Path(args[0]),Path(args[1]),rigs)

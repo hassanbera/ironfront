@@ -178,6 +178,25 @@ function animate(now: number) {
       const phase = once
         ? (time - started) % cycle
         : time + (crowd ? i * 0.173 : 0);
+      let shownAction = action, shownPhase = phase, loop = !once;
+      const sparring = duel && motion === "attack";
+      if (sparring) {
+        const elapsed = time - started;
+        const attacker = Math.floor(elapsed / 1.35) % 2;
+        const age = elapsed % 1.35;
+        const duration = attacker === 0 ? .62 : rules.combat.meleeDuration;
+        const impact = duration * (attacker === 0 ? .42 : rules.combat.impactFraction);
+        shownAction = "block";
+        shownPhase = 0;
+        if (attacker === i && age < duration) {
+          shownAction = "slash";
+          shownPhase = age / duration * chars.duration(gear.model, shownAction);
+        } else if (attacker !== i && age >= impact && age < impact + .32) {
+          shownAction = "blockHit";
+          shownPhase = (age-impact) / .32 * chars.duration(gear.model, shownAction);
+        }
+        loop = false;
+      }
       const x = duel ? (i - .5) * 2.15 : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
         z = crowd ? (Math.floor(i / 20) - 9.5) * 1.45 : 0;
       chars.draw({
@@ -186,11 +205,12 @@ function animate(now: number) {
         x,
         y: 0,
         z,
-        facing: duel ? (i === 0 ? .80 : -.80) : 0,
+        facing: duel ? (i === 0 ? 1 : -1) * (sparring ? Math.PI/2 : .80) : 0,
+        size: duel && i === 0 ? 1.16 : 1,
         color: colors[owner],
-        motion: action,
-        phase,
-        loop: !once,
+        motion: shownAction,
+        phase: shownPhase,
+        loop,
       });
       if (!crowd) {
         const point = new T.Vector3(x, 2.7, z).project(camera);

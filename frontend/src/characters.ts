@@ -18,6 +18,7 @@ type Batch = {
 };
 type Model = {
   meta: Metadata;
+  duelClips: Record<string, Clip>;
   batches: Map<string, Batch>;
   material: T.MeshStandardMaterial;
   duelMaterial?: T.MeshStandardMaterial;
@@ -53,6 +54,7 @@ export type Character = {
 };
 const matrix = new T.Object3D();
 const CAPACITY = 1100;
+const versioned = (url: string) => url + "?v=" + import.meta.env.VITE_CHARACTER_REV;
 
 /** Shared GPU pose atlas: three animated bodies, independent equipment and one instance per soldier.
  * The CPU samples one scalar pose per actor; it never updates hundreds of skeletons/mixers.
@@ -73,7 +75,7 @@ export class Characters {
     const loader = new T.TextureLoader();
     const [color, finish, normal] = await Promise.all(
       ["color", "finish", "normal"].map((kind) =>
-        loader.loadAsync(`/assets/characters/duel-${kind}.png`),
+        loader.loadAsync(versioned(`/assets/characters/duel-${kind}.png`)),
       ),
     );
     this.duelTextures = [color, finish, normal];
@@ -83,7 +85,7 @@ export class Characters {
       ["knight", "viking", "ranger"].map(async (name) => {
         const prefix = `/assets/characters/${name}`;
         const get = async (url: string) => {
-          const response = await fetch(url);
+          const response = await fetch(versioned(url));
           if (!response.ok)
             throw new Error(`Character asset ${response.status}: ${url}`);
           return response;
@@ -92,10 +94,12 @@ export class Characters {
           get(prefix + ".json").then((r) => r.json()) as Promise<Metadata>,
           get(prefix + "-mesh.bin").then((r) => r.arrayBuffer()),
           get(prefix + "-poses.bin").then((r) => r.arrayBuffer()),
-          new T.TextureLoader().loadAsync(prefix + ".png"),
+          loader.loadAsync(versioned(prefix + ".png")),
         ]);
         atlas.colorSpace = T.SRGBColorSpace;
         atlas.flipY = false;
+        if (poses.byteLength !== meta.bones * meta.frames * 32)
+          throw new Error(`Pose atlas size mismatch for ${name}`);
         const texture = new T.DataTexture(
           new Uint16Array(poses),
           meta.bones * 4,
@@ -221,6 +225,11 @@ export class Characters {
         }
         const model: Model = {
           meta,
+          duelClips: Object.fromEntries(
+            Object.entries(meta.animations)
+              .filter(([key]) => key.startsWith("duel_"))
+              .map(([key, clip]) => [key.slice(5), clip]),
+          ),
           batches: new Map(),
           material,
           duelMaterial,
@@ -303,6 +312,7 @@ export class Characters {
     const model = this.models.get(actor.model);
     if (!model) return;
     const clip =
+      (actor.weapon === "duelSword" && model.duelClips[actor.motion]) ||
       model.meta.animations[actor.motion] || model.meta.animations.idle;
     const duration = Math.max(clip.duration, 1 / 24);
     const phase = actor.loop

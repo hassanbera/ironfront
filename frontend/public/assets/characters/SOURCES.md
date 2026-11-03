@@ -17,10 +17,12 @@ To regenerate, place the three GLBs and the original `LICENSE.txt` in a local so
 
 ```sh
 node scripts/bake-characters.mjs /path/to/source-directory
-blender --background --python art/duel/build.py
+blender --background --factory-startup --python-exit-code 1 --python art/duel/build.py -- /path/to/source-directory
 node scripts/validate-character-assets.mjs
 ```
 
 Only those source files are read. Generated `.json`, `.bin`, `.png` and provenance files are written to this directory. Commit generated assets together with converter changes; reload test clients after rebuilding the complete asset set.
 
 The duel pack builds two original socketed sword/shield sets and three shared procedural PNG maps in Blender Python. Its near-body UVs and material colours reference the existing CC0 bodies. The two fighters use a red round kalkan and curved blade, or a heater shield and straight sword. Blender source is in `art/duel/`. Launch `/drill.html?duel` to inspect them together.
+
+The Blender motion pass samples the source armature, retimes the sword arc to the server's contact phase, then keys the torso, shoulder and shield corrections into editable Actions. Nine clips per kit are appended to the GPU pose atlas. Pass an optional output `.blend` path after the source directory to export the two rigged characters, packed maps and Actions for further editing.

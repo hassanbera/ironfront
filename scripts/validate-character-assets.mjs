@@ -30,6 +30,24 @@ for(const name of ['knight','viking','ranger']){
     data[kind]=fields.index.length/3;
   }
   assert.ok(data.bodyFar<data.bodyMid&&data.bodyMid<data.body);
+  if (name === 'knight' || name === 'ranger') {
+    assert.equal(data.duelBody, data.body, 'Detailed cloth must share the original body topology');
+    assert.ok(data.duelSword > 0 && data.duelSword < 500, 'Duel equipment triangle budget');
+    for (const motion of ['slash','backslash','stab','blockHit','hit','walk','run','dodgeLeft','dodgeRight']) {
+      assert.equal(meta.animations['duel_'+motion]?.duration, meta.animations[motion].duration);
+    }
+    for (const motion of ['slash','backslash']) {
+      const clip = meta.animations['duel_'+motion];
+      const impact = name === 'ranger' ? .42 : .45;
+      const frame = clip.start + Math.round(impact * (clip.frames-1));
+      const socket = (frame * meta.bones + meta.bones-3) * 32;
+      const element = i => DataUtils.fromHalfFloat(poses.readUInt16LE(socket + i*2));
+      const tip = name === 'ranger' ? [.29,1.32] : [0,1.42];
+      const x = element(0)*tip[0] + element(4)*tip[1] + element(12);
+      const z = element(2)*tip[0] + element(6)*tip[1] + element(14);
+      assert.ok(Math.abs(x)<.035 && z>1, name+' '+motion+' missed the forward impact line');
+    }
+  }
   const idle=meta.animations.idle.start*meta.bones*32,run=meta.animations.run.start*meta.bones*32;
   assert.notDeepEqual(poses.subarray(idle,idle+meta.bones*32),poses.subarray(run,run+meta.bones*32));
   summary.push({model:name,clips:Object.keys(meta.animations).length,triangles:[data.body,data.bodyMid,data.bodyFar]});
