@@ -61,7 +61,8 @@ func (g *Game) contactStillValid(c *unitContact) bool {
 	}
 	dx, dz := c.x-c.from.X, c.z-c.from.Z
 	d2 := dx*dx + dz*dz
-	dot := dx*math.Sin(s.Facing) + dz*math.Cos(s.Facing)
+	sn, cs := g.fightingDirection(s, c.from, math.Sin(s.Facing), math.Cos(s.Facing))
+	dot := dx*sn + dz*cs
 	return d2 <= reach*reach && dot >= 0 && dot*dot >= d2*.02888882966567 && g.nav.clearShot(c.from.X, c.from.Z, c.x, c.z)
 }
 func (g *Game) launchProjectile(c unitContact) ShotVisual {
@@ -106,7 +107,8 @@ func (g *Game) startUnitAttack(s *Squad) {
 		if !a.Ready {
 			continue
 		}
-		c := g.contactFor(s, a, reach, sn, cs)
+		fx, fz := g.fightingDirection(s, a, sn, cs)
+		c := g.contactFor(s, a, reach, fx, fz)
 		if c.from == nil {
 			continue
 		}

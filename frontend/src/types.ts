@@ -51,6 +51,7 @@ export interface Squad {
   hitSlots?: number;
   attackDuration?: number;
   attackImpact?: number;
+  meleeTarget?: number;
   volley?: ShotVisual[];
   aimX: number;
   aimZ: number;

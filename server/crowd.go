@@ -8,10 +8,11 @@ const crowdGridN = 64
 const heroRadius = .65
 
 type SoldierBody struct {
-	Key, Slot, Next int
-	Squad           *Squad
-	X, Z, Radius    float64
-	Ready           bool
+	Key, Slot, Next    int
+	Squad              *Squad
+	X, Z, Radius       float64
+	assaultX, assaultZ float64
+	Ready              bool
 }
 
 func formationOffset(shape string, i int) (float64, float64) {
@@ -155,6 +156,9 @@ func (g *Game) stepCrowd(dt float64) {
 			oz *= scale
 			x, z := s.X+ox*cs+oz*sn, s.Z-ox*sn+oz*cs
 			b := &s.Bodies[slot]
+			if s.MeleeTarget != 0 && b.Ready {
+				x, z = b.assaultX, b.assaultZ
+			}
 			b.Key = s.ID*32 + slot
 			b.Slot = slot
 			b.Squad = s

@@ -1497,6 +1497,9 @@ export class World {
         shape = f.formations[s.formation].shape;
       const gear = outfit(s.owner, spec.kind),
         mounted = isMounted(spec.kind);
+      const target = !s.meleeTarget || serverTime < s.notice ? undefined :
+        s.meleeTarget >= 1000 ? state.bases.find(b => b.id === s.meleeTarget! - 1000) :
+        state.squads.find(other => other.id === s.meleeTarget);
       for (let rank = 0; rank < s.alive; rank++) {
         const i = s.slots?.[rank] ?? rank,
           key = s.id * 32 + i;
@@ -1518,6 +1521,7 @@ export class World {
           z += -ox * Math.sin(v.facing) + oz * Math.cos(v.facing);
         }
         const ground = heightAt(this.mapID, x, z);
+        const facing = target ? Math.atan2(target.x-x, target.z-z) : v.facing;
         if (!this.actorVisibility.visible(x, ground + 1.5, z)) continue;
         const fade =
           this.heroMode && activeHero
@@ -1590,7 +1594,7 @@ export class World {
                 ? 1.1 + (actorMoving ? Math.sin(this.time * 12 + i) * 0.07 : 0)
                 : 0),
             z: z + Math.cos(v.facing) * lunge,
-            facing: v.facing,
+            facing,
             color: factionColors[s.owner],
             motion,
             phase,
@@ -1602,7 +1606,7 @@ export class World {
           this.soldier(
             x,
             z,
-            v.facing,
+            facing,
             s.owner,
             spec.kind,
             i,

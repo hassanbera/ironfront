@@ -213,6 +213,7 @@ func (g *Game) command(owner int, c Command) error {
 				tz += float64(i/3) * 10
 			}
 			s.Order = c.Order
+			s.MeleeTarget = 0
 			s.Target = c.Target
 			s.TargetX = tx
 			s.TargetZ = tz
@@ -380,6 +381,8 @@ func (g *Game) moveSquads(dt float64) {
 			continue
 		}
 		s.Engaged = false
+		previousTarget := s.MeleeTarget
+		s.MeleeTarget = 0
 		spec := g.spec(s)
 		rangeV := g.rangeOf(s)
 		var enemy *Squad
@@ -403,6 +406,11 @@ func (g *Game) moveSquads(dt float64) {
 				inReach = d <= rangeV && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z})
 			} else {
 				inReach = g.hasMeleeContact(s)
+				if (s.Order == "attack" || s.Order == "attackmove") && (s.Target < 1000 || s.Order == "attackmove") && d < 26 &&
+					(inReach || previousTarget == enemy.ID) && g.nav.clearShot(s.X, s.Z, enemy.X, enemy.Z) {
+					g.pressAttack(s, enemy, nil, previousTarget)
+					inReach = true
+				}
 			}
 			if inReach {
 				stop = true
@@ -420,6 +428,10 @@ func (g *Game) moveSquads(dt float64) {
 					inReach := dist(s.X, s.Z, b.X, b.Z) < rangeV+7
 					if !ranged(spec.Kind) {
 						inReach = g.hasMeleeContact(s)
+						if dist(s.X, s.Z, b.X, b.Z) < 26 && (inReach || previousTarget == s.Target) {
+							g.pressAttack(s, nil, b, previousTarget)
+							inReach = true
+						}
 					}
 					if inReach {
 						stop = true
@@ -427,6 +439,9 @@ func (g *Game) moveSquads(dt float64) {
 					}
 				}
 			}
+		}
+		if previousTarget != 0 && enemy == nil && s.Order == "attackmove" {
+			s.Path = g.nav.path(s.X, s.Z, s.TargetX, s.TargetZ)
 		}
 		if !stop && len(s.Path) > 0 {
 			v := s.Path[0]

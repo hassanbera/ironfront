@@ -78,48 +78,51 @@ type Player struct {
 	LastSeen   float64 `json:"-"`
 }
 type Squad struct {
-	ID             int          `json:"id"`
-	Owner          int          `json:"owner"`
-	Class          int          `json:"class"`
-	Formation      int          `json:"formation"`
-	X              float64      `json:"x"`
-	Z              float64      `json:"z"`
-	Facing         float64      `json:"facing"`
-	HP             float64      `json:"hp"`
-	Alive          int          `json:"alive"`
-	TargetX        float64      `json:"targetX"`
-	TargetZ        float64      `json:"targetZ"`
-	Order          string       `json:"order"`
-	Target         int          `json:"target"`
-	Engaged        bool         `json:"engaged"`
-	Notice         float64      `json:"notice"`
-	Respawn        float64      `json:"respawn"`
-	Flash          float64      `json:"flash"`
-	AttackAt       float64      `json:"attackAt"`
-	AttackSlots    uint32       `json:"attackSlots"`
-	HitSlots       uint32       `json:"hitSlots"`
-	AttackDuration float64      `json:"attackDuration,omitempty"`
-	AttackImpact   float64      `json:"attackImpact,omitempty"`
-	Volley         []ShotVisual `json:"volley,omitempty"`
-	strikes        [25]unitContact
-	strikeCount    int
-	pendingImpact  float64
-	resolvedAt     float64
-	hitEpoch       uint64
-	moving         bool
-	AimX           float64         `json:"aimX"`
-	AimZ           float64         `json:"aimZ"`
-	Flank          string          `json:"flank"`
-	Path           []Vec           `json:"-"`
-	Repath         float64         `json:"-"`
-	AttackTimer    float64         `json:"-"`
-	LastAttacker   int             `json:"-"`
-	LastHit        float64         `json:"-"`
-	Reform         float64         `json:"-"`
-	Missing        []float64       `json:"-"`
-	Travel         float64         `json:"-"`
-	Slots          []int           `json:"slots"`
-	Bodies         [25]SoldierBody `json:"-"`
+	ID                     int          `json:"id"`
+	Owner                  int          `json:"owner"`
+	Class                  int          `json:"class"`
+	Formation              int          `json:"formation"`
+	X                      float64      `json:"x"`
+	Z                      float64      `json:"z"`
+	Facing                 float64      `json:"facing"`
+	HP                     float64      `json:"hp"`
+	Alive                  int          `json:"alive"`
+	TargetX                float64      `json:"targetX"`
+	TargetZ                float64      `json:"targetZ"`
+	Order                  string       `json:"order"`
+	Target                 int          `json:"target"`
+	Engaged                bool         `json:"engaged"`
+	Notice                 float64      `json:"notice"`
+	Respawn                float64      `json:"respawn"`
+	Flash                  float64      `json:"flash"`
+	AttackAt               float64      `json:"attackAt"`
+	AttackSlots            uint32       `json:"attackSlots"`
+	HitSlots               uint32       `json:"hitSlots"`
+	AttackDuration         float64      `json:"attackDuration,omitempty"`
+	AttackImpact           float64      `json:"attackImpact,omitempty"`
+	Volley                 []ShotVisual `json:"volley,omitempty"`
+	strikes                [25]unitContact
+	strikeCount            int
+	pendingImpact          float64
+	resolvedAt             float64
+	hitEpoch               uint64
+	moving                 bool
+	MeleeTarget            int `json:"meleeTarget,omitempty"`
+	nextLanes              float64
+	aimCenterX, aimCenterZ float64
+	AimX                   float64         `json:"aimX"`
+	AimZ                   float64         `json:"aimZ"`
+	Flank                  string          `json:"flank"`
+	Path                   []Vec           `json:"-"`
+	Repath                 float64         `json:"-"`
+	AttackTimer            float64         `json:"-"`
+	LastAttacker           int             `json:"-"`
+	LastHit                float64         `json:"-"`
+	Reform                 float64         `json:"-"`
+	Missing                []float64       `json:"-"`
+	Travel                 float64         `json:"-"`
+	Slots                  []int           `json:"slots"`
+	Bodies                 [25]SoldierBody `json:"-"`
 }
 type Base struct {
 	ID        int     `json:"id"`
