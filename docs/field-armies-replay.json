@@ -1,0 +1,530 @@
+[
+  {
+    "scene": "rts800",
+    "owner": 3,
+    "fixtureChecksum": 2817214721,
+    "source": "http://127.0.0.1:8800",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 800,
+    "frames": 419,
+    "fps": 33.1,
+    "frame": {
+      "median": 25.1,
+      "p95": 41.8,
+      "max": 116.6
+    },
+    "over33ms": 55,
+    "over50ms": 16,
+    "cpu": {
+      "army": {
+        "median": 7.4,
+        "p95": 10.7,
+        "max": 21.4
+      },
+      "labels": {
+        "median": 0.6,
+        "p95": 1.3,
+        "max": 3
+      },
+      "render": {
+        "median": 3.3,
+        "p95": 5.7,
+        "max": 28.7
+      },
+      "update": {
+        "median": 0.5,
+        "p95": 1.6,
+        "max": 2.1
+      }
+    },
+    "gpuMs": {
+      "median": 21.932,
+      "p95": 35.132,
+      "max": 119.673
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 54,
+      "p95": 54,
+      "max": 54
+    },
+    "triangles": {
+      "median": 539151,
+      "p95": 540176,
+      "max": 540805
+    },
+    "actors": {
+      "median": 586,
+      "p95": 587,
+      "max": 588
+    },
+    "order": 1
+  },
+  {
+    "scene": "rts800",
+    "owner": 3,
+    "fixtureChecksum": 2817214721,
+    "source": "http://127.0.0.1:8810",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 800,
+    "frames": 419,
+    "fps": 30.5,
+    "frame": {
+      "median": 33.3,
+      "p95": 49.9,
+      "max": 166.5
+    },
+    "over33ms": 116,
+    "over50ms": 7,
+    "cpu": {
+      "army": {
+        "median": 12.8,
+        "p95": 23.9,
+        "max": 112
+      },
+      "labels": {
+        "median": 1,
+        "p95": 2.7,
+        "max": 50.2
+      },
+      "render": {
+        "median": 7.4,
+        "p95": 12.4,
+        "max": 28.1
+      },
+      "update": {
+        "median": 0.7,
+        "p95": 2.1,
+        "max": 2.7
+      }
+    },
+    "gpuMs": {
+      "median": 25.724,
+      "p95": 36.38,
+      "max": 47.913
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 59,
+      "p95": 59,
+      "max": 59
+    },
+    "triangles": {
+      "median": 537783,
+      "p95": 538765,
+      "max": 539412
+    },
+    "actors": {
+      "median": 586,
+      "p95": 587,
+      "max": 588
+    },
+    "order": 2
+  },
+  {
+    "scene": "rts800",
+    "owner": 3,
+    "fixtureChecksum": 2817214721,
+    "source": "http://127.0.0.1:8810",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 800,
+    "frames": 419,
+    "fps": 35.1,
+    "frame": {
+      "median": 25.1,
+      "p95": 33.5,
+      "max": 41.7
+    },
+    "over33ms": 37,
+    "over50ms": 0,
+    "cpu": {
+      "army": {
+        "median": 10.3,
+        "p95": 13.4,
+        "max": 19
+      },
+      "labels": {
+        "median": 0.8,
+        "p95": 1.9,
+        "max": 3
+      },
+      "render": {
+        "median": 5.9,
+        "p95": 8.3,
+        "max": 13.1
+      },
+      "update": {
+        "median": 0.5,
+        "p95": 1.1,
+        "max": 2.1
+      }
+    },
+    "gpuMs": {
+      "median": 22.915,
+      "p95": 28.029,
+      "max": 35.016
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 59,
+      "p95": 59,
+      "max": 59
+    },
+    "triangles": {
+      "median": 537783,
+      "p95": 538765,
+      "max": 539412
+    },
+    "actors": {
+      "median": 586,
+      "p95": 587,
+      "max": 588
+    },
+    "order": 3
+  },
+  {
+    "scene": "rts800",
+    "owner": 3,
+    "fixtureChecksum": 2817214721,
+    "source": "http://127.0.0.1:8800",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 800,
+    "frames": 419,
+    "fps": 34.3,
+    "frame": {
+      "median": 25.1,
+      "p95": 41.6,
+      "max": 58.4
+    },
+    "over33ms": 58,
+    "over50ms": 4,
+    "cpu": {
+      "army": {
+        "median": 15.3,
+        "p95": 22.9,
+        "max": 43.7
+      },
+      "labels": {
+        "median": 0.9,
+        "p95": 2.5,
+        "max": 3.6
+      },
+      "render": {
+        "median": 6.1,
+        "p95": 10.1,
+        "max": 16.2
+      },
+      "update": {
+        "median": 0.7,
+        "p95": 1.9,
+        "max": 2.3
+      }
+    },
+    "gpuMs": {
+      "median": 23.984,
+      "p95": 30.194,
+      "max": 49.36
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 54,
+      "p95": 54,
+      "max": 54
+    },
+    "triangles": {
+      "median": 539151,
+      "p95": 540176,
+      "max": 540805
+    },
+    "actors": {
+      "median": 586,
+      "p95": 587,
+      "max": 588
+    },
+    "order": 4
+  },
+  {
+    "scene": "hero400",
+    "owner": 3,
+    "fixtureChecksum": 2285274841,
+    "source": "http://127.0.0.1:8800",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 400,
+    "frames": 419,
+    "fps": 34.5,
+    "frame": {
+      "median": 25.1,
+      "p95": 41.7,
+      "max": 58.2
+    },
+    "over33ms": 73,
+    "over50ms": 1,
+    "cpu": {
+      "army": {
+        "median": 6.3,
+        "p95": 9.4,
+        "max": 28.2
+      },
+      "labels": {
+        "median": 0.8,
+        "p95": 1.5,
+        "max": 3.9
+      },
+      "render": {
+        "median": 3.9,
+        "p95": 5.8,
+        "max": 22.2
+      },
+      "update": {
+        "median": 0.4,
+        "p95": 1.2,
+        "max": 1.4
+      }
+    },
+    "gpuMs": {
+      "median": 21.881,
+      "p95": 33.306,
+      "max": 42.69
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 44,
+      "p95": 49,
+      "max": 51
+    },
+    "triangles": {
+      "median": 456037,
+      "p95": 478135,
+      "max": 486613
+    },
+    "actors": {
+      "median": 228,
+      "p95": 283,
+      "max": 291
+    },
+    "order": 1
+  },
+  {
+    "scene": "hero400",
+    "owner": 3,
+    "fixtureChecksum": 2285274841,
+    "source": "http://127.0.0.1:8810",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 400,
+    "frames": 419,
+    "fps": 35.6,
+    "frame": {
+      "median": 25.1,
+      "p95": 41.7,
+      "max": 58.2
+    },
+    "over33ms": 59,
+    "over50ms": 3,
+    "cpu": {
+      "army": {
+        "median": 6.4,
+        "p95": 9.5,
+        "max": 30.7
+      },
+      "labels": {
+        "median": 0.9,
+        "p95": 2.2,
+        "max": 3.6
+      },
+      "render": {
+        "median": 6,
+        "p95": 13.1,
+        "max": 35.2
+      },
+      "update": {
+        "median": 0.4,
+        "p95": 1.1,
+        "max": 2.1
+      }
+    },
+    "gpuMs": {
+      "median": 22.411,
+      "p95": 29.143,
+      "max": 37.367
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 54,
+      "p95": 62,
+      "max": 63
+    },
+    "triangles": {
+      "median": 353258,
+      "p95": 391271,
+      "max": 395601
+    },
+    "actors": {
+      "median": 224,
+      "p95": 283,
+      "max": 289
+    },
+    "order": 2
+  },
+  {
+    "scene": "hero400",
+    "owner": 3,
+    "fixtureChecksum": 2285274841,
+    "source": "http://127.0.0.1:8810",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 400,
+    "frames": 419,
+    "fps": 37.8,
+    "frame": {
+      "median": 25,
+      "p95": 41.6,
+      "max": 58.3
+    },
+    "over33ms": 47,
+    "over50ms": 4,
+    "cpu": {
+      "army": {
+        "median": 7.9,
+        "p95": 12.6,
+        "max": 35.7
+      },
+      "labels": {
+        "median": 1,
+        "p95": 2.1,
+        "max": 7.4
+      },
+      "render": {
+        "median": 6.9,
+        "p95": 12.5,
+        "max": 24.3
+      },
+      "update": {
+        "median": 0.4,
+        "p95": 1.4,
+        "max": 3.5
+      }
+    },
+    "gpuMs": {
+      "median": 20.697,
+      "p95": 29.788,
+      "max": 51.905
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 54,
+      "p95": 62,
+      "max": 63
+    },
+    "triangles": {
+      "median": 353258,
+      "p95": 391271,
+      "max": 395601
+    },
+    "actors": {
+      "median": 224,
+      "p95": 283,
+      "max": 289
+    },
+    "order": 3
+  },
+  {
+    "scene": "hero400",
+    "owner": 3,
+    "fixtureChecksum": 2285274841,
+    "source": "http://127.0.0.1:8800",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "high",
+    "soldiers": 400,
+    "frames": 419,
+    "fps": 35.2,
+    "frame": {
+      "median": 25,
+      "p95": 49.9,
+      "max": 183.3
+    },
+    "over33ms": 50,
+    "over50ms": 14,
+    "cpu": {
+      "army": {
+        "median": 5.9,
+        "p95": 8.8,
+        "max": 40.1
+      },
+      "labels": {
+        "median": 0.8,
+        "p95": 1.6,
+        "max": 2.3
+      },
+      "render": {
+        "median": 4.1,
+        "p95": 6.9,
+        "max": 23.9
+      },
+      "update": {
+        "median": 0.4,
+        "p95": 1.2,
+        "max": 2
+      }
+    },
+    "gpuMs": {
+      "median": 20.506,
+      "p95": 39.112,
+      "max": 106.789
+    },
+    "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x00009BC4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "calls": {
+      "median": 44,
+      "p95": 49,
+      "max": 51
+    },
+    "triangles": {
+      "median": 456037,
+      "p95": 478135,
+      "max": 486613
+    },
+    "actors": {
+      "median": 228,
+      "p95": 283,
+      "max": 291
+    },
+    "order": 4
+  }
+]

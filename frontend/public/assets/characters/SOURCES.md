@@ -1,5 +1,7 @@
 # Animated character assets
 
+The field armies use original fitted garments in `art/duel/field_kit.py`. Cloth, helmets, infantry mantles, wrapped headwear, quivers and spare javelins share the existing material maps and skeletons. Three mesh detail levels are baked per outfit. These meshes use the existing animation atlases unchanged.
+
 Source: **KayKit Character Pack Adventurers 1.0**, Kay Lousberg, **CC0 1.0**.
 
 - Official repository: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
