@@ -6,6 +6,8 @@ Ekonomisiz, dört oyunculu, 3D RTS / üçüncü şahıs savaş oyununun ilk oyna
 
 ## Hemen oyna — Windows
 
+3 Kasım görsel paketinin kaynak sürümünde Birlik Talimi → **Turks ve Knights · İkili talim** iki yeni modeli karşılaştırır. [Düzenlenebilir Blender sahnesi](art/duel/IRONFRONT-Duel.blend) · [Önce/sonra performans ölçümü](docs/DUEL_VALIDATION.md).
+
 Güncel hazır pakette `start-performance.cmd` dosyasına çift tıkla. Oyun `http://localhost:8792` adresinde açılır. Konsol açık kaldığı sürece sunucu çalışır; kapatmak maçı sonlandırır. Önceki savaş paketi `start-combat.cmd` ile 8790, ilk paket `start-game.cmd` ile 8787 portundadır.
 
 GitHub reposu kaynak kod içerir; `.exe`, `node_modules` ve derlenmiş frontend dizinleri repoya eklenmez. Repoyu klonladıysan aşağıdaki kaynaktan çalıştırma adımlarını kullan. Önceki hazır Windows ZIP paketi bu güncellemeyi içermez; henüz GitHub Release yayımlanmadı.

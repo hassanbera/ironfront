@@ -27,6 +27,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Sıradaki işler
 
+3 Kasım 2026'da Turks kılıç-kalkanlı Muhafızı ve Knights ağır piyadesi için Blender malzemeleri, ekipman, dokuzar klip ve ikili talim eklendi. [Kaynak sahnesi, testler ve kontrollü karşılaştırma](DUEL_VALIDATION.md).
+
 30 Ekim 2026'da [Vercel frontend](https://ironfront-ebon.vercel.app) ve Render Frankfurt Go servisi yayımlandı. Dört WSS istemcisi, tarayıcıdan faction reddi/tekrar katılım, 400 asker, hero hareketi/isabeti ve origin denetimi canlıda doğrulandı. Katılım reddinde proxy close gecikmesinin arayüzü bekletmesi düzeltildi. [Dağıtım kimlikleri ve test kaydı](DEPLOYMENT.md). Dört farklı cihazla gerçek oyuncu testi hâlâ kullanıcı denemesini bekliyor.
 
 Birlik teması gerçek asker gövdelerinden hesaplanır: yalnız menzil/açı/engel denetimini geçen askerler saldırır, yakındaki askerler merkezleri uzakta olsa da çatışabilir. Vurulan slot hasar tepkisini ve ölümü taşır. Hero blok/kaçınma, üs yüzeyi, engeller ve allocation üretmeyen temas sorgusu testleri; tüm Go testleri/vet, üretim derlemesi, dört WebSocket istemcisi ve tarayıcıda ön/arka sıra ayrımı geçti.
