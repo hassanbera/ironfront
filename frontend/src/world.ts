@@ -8,7 +8,7 @@ import { swordLabels, swordMotion, swordPhase, swordSteps } from "./sword-chain"
 import { ActorVisibility } from "./actor-visibility";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
-  rules, fieldSize, fieldLimit, corners, posts,
+  rules, fieldSize, fieldLimit, overviewDistance, corners, posts,
   clamp,
   isMounted,
   isRanged,
@@ -69,13 +69,30 @@ function random(seed: number) {
   };
 }
 function heightAt(map: number, x: number, z: number) {
-  let h = 0.14 * Math.sin(x * 0.16) * Math.cos(z * 0.12);
+  let h = 0.10 * Math.sin(x * 0.028) * Math.cos(z * 0.032);
   for (const v of rules.maps[map].zones) {
     if (v.kind !== "hill") continue;
     const d = ((x - v.x) / v.rx) ** 2 + ((z - v.z) / v.rz) ** 2;
-    h += 3.5 * Math.max(0, 1 - d) ** 2;
+    h += 14 * Math.max(0, 1 - d) ** 2;
   }
   return h;
+}
+
+function groundGrain() {
+  const side = 128, pixels = new Uint8Array(side * side * 4), rand = random(8143);
+  for (let i = 0; i < pixels.length; i += 4) {
+    const v = 218 + Math.floor(rand() * 37);
+    pixels[i] = pixels[i+1] = pixels[i+2] = v;
+    pixels[i+3] = 255;
+  }
+  const texture = new THREE.DataTexture(pixels, side, side);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.setScalar(fieldSize / 12);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
 }
 function offset(shape: string, i: number): [number, number] {
   const row = Math.floor(i / 5),
@@ -107,7 +124,10 @@ function offset(shape: string, i: number): [number, number] {
 export class World {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(44, 1, 0.1, 650);
+  camera = new THREE.PerspectiveCamera(44, 1, 0.15, fieldSize * 3.5);
+  private sunlight = new THREE.DirectionalLight("#fff3d4", 3.2);
+  private grain = groundGrain();
+  private snapFocus = false;
   canvas: HTMLCanvasElement;
   state: GameState | null = null;
   owner = -1;
@@ -116,7 +136,7 @@ export class World {
   preview = true;
   mapID = -1;
   focus = new THREE.Vector3(0, 0, 0);
-  distance = fieldSize * 1.06;
+  distance = overviewDistance;
   azimuth = 0.57;
   heroYaw = 0;
   heroPitch = 0.24;
@@ -252,19 +272,15 @@ export class World {
     this.scene.background = new THREE.Color("#263b34");
     this.scene.fog = new THREE.Fog("#263b34", 210, 430);
     this.scene.add(new THREE.HemisphereLight("#e5efdb", "#414b38", 2.1));
-    const sun = new THREE.DirectionalLight("#fff3d4", 3.2);
+    const sun = this.sunlight;
     sun.position.set(-38, 145, 28);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -fieldSize*.64;
-    sun.shadow.camera.right = fieldSize*.64;
-    sun.shadow.camera.top = fieldSize*.64;
-    sun.shadow.camera.bottom = -fieldSize*.64;
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 260;
     sun.shadow.bias = -0.0003;
     sun.shadow.normalBias = 0.45;
-    this.scene.add(sun);
+    this.scene.add(sun, sun.target);
     this.scene.add(this.root, this.actors, this.effects);
     this.arrows.count = 0;
     this.arrows.frustumCulled = false;
@@ -490,7 +506,7 @@ export class World {
       fieldSize*1.28,
       fieldSize*2.5,
     );
-    const geo = new THREE.PlaneGeometry(m.size, m.size, 100, 100);
+    const geo = new THREE.PlaneGeometry(m.size, m.size, 128, 128);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.getAttribute("position");
     const colors = [];
@@ -506,22 +522,25 @@ export class World {
         hex = snow ? "#d9ddce" : grass ? "#8e8e66" : "#baa578";
       if (terrain === "marsh") hex = "#657f80";
       if (terrain === "pass") hex = "#c9ad7b";
-      const path = Math.min(Math.abs(x - z), Math.abs(x + z));
-      if (path < 3.3 || Math.abs(Math.hypot(x, z) - rules.deployment.outpost*Math.SQRT2) < 2)
-        hex = snow ? "#a4b4ae" : grass ? "#b5a685" : "#d7bb88";
       c.set(hex).multiplyScalar(0.92 + rand() * 0.16);
       colors.push(c.r, c.g, c.b);
     }
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const land = new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        roughness: 1,
-        flatShading: true,
-      }),
-    );
+    const soil = new THREE.MeshStandardMaterial({vertexColors:true, roughness:1, flatShading:true, map:this.grain});
+    soil.onBeforeCompile = shader => {
+      shader.uniforms.roadColor={value:new THREE.Color(snow ? "#a4b4ae" : grass ? "#b5a685" : "#d7bb88")};
+      shader.uniforms.postRing={value:rules.deployment.outpost*Math.SQRT2};
+      shader.vertexShader="varying vec2 fieldXZ;\n"+shader.vertexShader.replace("#include <begin_vertex>",
+        "#include <begin_vertex>\nfieldXZ=position.xz;");
+      shader.fragmentShader="varying vec2 fieldXZ; uniform vec3 roadColor; uniform float postRing;\n"+shader.fragmentShader.replace("#include <color_fragment>", `
+        #include <color_fragment>
+        float diagonal=min(abs(fieldXZ.x-fieldXZ.y),abs(fieldXZ.x+fieldXZ.y))*.7071;
+        float lane=min(diagonal-2.7,abs(length(fieldXZ)-postRing)-2.0);
+        float aa=max(.55,fwidth(lane));
+        diffuseColor.rgb=mix(diffuseColor.rgb,roadColor*sampledDiffuseColor.rgb,(1.0-smoothstep(-aa,aa,lane))*.85);`);
+    };
+    const land = new THREE.Mesh(geo,soil);
     land.receiveShadow = true;
     this.root.add(land);
     const pedestal = new THREE.Mesh(
@@ -535,7 +554,7 @@ export class World {
     pedestal.receiveShadow = true;
     this.root.add(pedestal);
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.PlaneGeometry(m.size*6, m.size*6),
       new THREE.MeshStandardMaterial({
         color: grass ? "#25392f" : snow ? "#3c5158" : "#514332",
         roughness: 1,
@@ -546,7 +565,7 @@ export class World {
     floor.receiveShadow = true;
     this.root.add(floor);
     const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(181, 0.15, 181)),
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(m.size+1, 0.15, m.size+1)),
       new THREE.LineBasicMaterial({
         color: "#b8b18d",
         transparent: true,
@@ -558,7 +577,8 @@ export class World {
     for (const z of m.zones) {
       if (z.kind === "forest") {
         const places: Placement[] = [];
-        for (let i = 0; i < 80; i++) {
+        const trees = Math.min(210, Math.ceil(z.rx*z.rz/75));
+        for (let i = 0; i < trees; i++) {
           const a = rand() * Math.PI * 2,
             r = Math.sqrt(rand()) * 0.94,
             x = z.x + Math.cos(a) * z.rx * r,
@@ -1917,11 +1937,43 @@ export class World {
       }
     this.labels.classList.toggle("hero-labels", this.heroMode);
   }
+  // Keep the shadow texels useful at troop scale while still covering the overview.
+  private centerShadows(x: number, z: number, radius: number) {
+    if (!this.renderer.shadowMap.enabled) return;
+    const light = this.sunlight, camera = light.shadow.camera;
+    const extent = Math.ceil(radius/8)*8;
+    const texel = extent*2/light.shadow.mapSize.x;
+    const cx = Math.round(x/texel)*texel, cz = Math.round(z/texel)*texel;
+    const height = extent*1.65+65;
+    light.target.position.set(cx,0,cz);
+    light.position.set(cx-height*.262,height,cz+height*.193);
+    if (camera.right !== extent) {
+      camera.left = camera.bottom = -extent;
+      camera.right = camera.top = extent;
+      camera.far = height*2;
+      camera.updateProjectionMatrix();
+    }
+  }
   private updateCamera(dt: number) {
+    const near = this.heroMode ? .15 : Math.max(.5, this.distance * .012);
+    // Large-map visibility is needed in the overview. A fighter on the ground
+    // sees a local horizon; far forests and their units need no draw calls.
+    const far = this.heroMode ? 260 : Math.max(260, this.distance * 2.3 + 100);
+    if (this.camera.near !== near || this.camera.far !== far) {
+      this.camera.near = near;
+      this.camera.far = far;
+      this.camera.updateProjectionMatrix();
+      const fog = this.scene.fog;
+      if (fog instanceof THREE.Fog) {
+        fog.near = far * .65;
+        fog.far = far * .98;
+      }
+    }
     if (this.heroMode && this.state) {
       const h = this.state.heroes.find((h) => h.owner === this.owner);
       if (h) {
         const p = this.heroViews.get(h.owner) ?? h;
+        this.centerShadows(p.x,p.z,48);
         const yaw = this.heroYaw;
         const dist = 8.2;
         const look = this.cameraLook.set(
@@ -2001,8 +2053,10 @@ export class World {
       this.distance * 0.86,
       this.focus.z + Math.cos(this.azimuth) * this.distance * 0.72,
     );
-    this.camera.position.lerp(goal, this.frame < 2 ? 1 : 1 - Math.exp(-dt * 7));
+    this.camera.position.lerp(goal, this.snapFocus || this.frame < 2 ? 1 : 1 - Math.exp(-dt * 7));
+    this.centerShadows(this.focus.x,this.focus.z,Math.max(64,this.distance*.8));
     this.camera.lookAt(this.focus);
+    this.snapFocus = false;
   }
   private animate = (now: number) => {
     if (this.disposed) return;
@@ -2269,7 +2323,7 @@ export class World {
       (e) => {
         e.preventDefault();
         if (!this.heroMode)
-          this.distance = clamp(this.distance + e.deltaY * 0.06, 25, fieldSize*1.25);
+          this.distance = clamp(this.distance * Math.exp(clamp(e.deltaY, -450, 450) * .00135), 25, fieldSize * 1.4);
       },
       { passive: false },
     );
@@ -2347,13 +2401,17 @@ export class World {
       (b) => b.id === this.state?.players[this.owner]?.mainBase,
     );
     if (b) {
-      this.focus.set(b.x * 0.75, 0, b.z * 0.75);
+      // Center on the deployment area just inside the gate.
+      const inward = 16 / Math.max(1, Math.hypot(b.x, b.z));
+      this.focus.set(b.x * (1-inward), 0, b.z * (1-inward));
+      this.snapFocus = true;
       this.distance = 85;
     }
   }
   focusPoint(x: number, z: number) {
     this.focus.set(x, 0, z);
-    if (this.preview) this.distance = fieldSize * 1.06;
+    this.snapFocus = true;
+    if (this.preview) this.distance = overviewDistance;
   }
   setQuality(q: string) {
     this.quality = q;
@@ -2537,6 +2595,7 @@ export class World {
     o.stop(this.audio.currentTime + length);
   }
   dispose() {
+    this.grain.dispose();
     this.disposed = true;
     cancelAnimationFrame(this.animation);
     window.removeEventListener("resize", this.resize);

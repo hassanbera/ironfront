@@ -141,6 +141,7 @@ export interface GameState {
   tick: number;
 }
 export const fieldSize = rules.maps[0].size;
+export const overviewDistance = fieldSize * 1.30;
 export const fieldLimit = fieldSize/2 - 5;
 const quadrants = (r: number) => [[-r,-r],[-r,r],[r,-r],[r,r]];
 export const corners = quadrants(rules.deployment.base);
