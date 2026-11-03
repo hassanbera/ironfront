@@ -41,8 +41,9 @@ type MapSpec struct {
 	Obstacles                               []Obstacle
 }
 type Rules struct {
-	Deployment struct{ Base, Outpost float64 }
-	SwordChain struct {
+	MatchMinutes int
+	Deployment   struct{ Base, Outpost float64 }
+	SwordChain   struct {
 		Steps                [3]struct{ Duration, Impact float64 }
 		Recovery, LinkWindow float64
 	}
@@ -210,34 +211,32 @@ type Event struct {
 	Owner int     `json:"owner"`
 }
 type Game struct {
-	Type             string     `json:"type"`
-	Room             string     `json:"room"`
-	Phase            string     `json:"phase"`
-	Map              int        `json:"map"`
-	Time             float64    `json:"time"`
-	Host             int        `json:"host"`
-	Players          []*Player  `json:"players"`
-	Squads           []*Squad   `json:"squads"`
-	Bases            []*Base    `json:"bases"`
-	Outposts         []*Outpost `json:"outposts"`
-	Heroes           []*Hero    `json:"heroes"`
-	Events           []Event    `json:"events"`
-	Winner           int        `json:"winner"`
-	Tick             int64      `json:"tick"`
-	nextID           int
-	eventID          int
-	botAt            float64
-	combatAt         float64
-	nav              *Nav
-	Crowd            [][3]int `json:"crowd,omitempty"`
-	bodies           []*SoldierBody
-	crowdHeads       [crowdGridN * crowdGridN]int
-	crowdOwners      [crowdGridN * crowdGridN]uint8
-	crowdCells       []int
-	crowdInitialized bool
-	contacts         []unitContact
-	flights          []battleShot
-	hitEpoch         uint64
+	Type       string     `json:"type"`
+	Room       string     `json:"room"`
+	Phase      string     `json:"phase"`
+	Map        int        `json:"map"`
+	Time       float64    `json:"time"`
+	Host       int        `json:"host"`
+	Players    []*Player  `json:"players"`
+	Squads     []*Squad   `json:"squads"`
+	Bases      []*Base    `json:"bases"`
+	Outposts   []*Outpost `json:"outposts"`
+	Heroes     []*Hero    `json:"heroes"`
+	Events     []Event    `json:"events"`
+	Winner     int        `json:"winner"`
+	Tick       int64      `json:"tick"`
+	nextID     int
+	eventID    int
+	botAt      float64
+	combatAt   float64
+	nav        *Nav
+	Crowd      [][3]int `json:"crowd,omitempty"`
+	bodies     []*SoldierBody
+	crowdRows  [crowdGridN][]crowdBucket
+	crowdCells []int
+	contacts   []unitContact
+	flights    []battleShot
+	hitEpoch   uint64
 }
 type Command struct {
 	Type      string    `json:"type"`

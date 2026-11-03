@@ -2,11 +2,11 @@ package main
 
 import "math"
 
-const fieldSize = 252
+const fieldSize = 1536
 const orderLimit = fieldSize/2 - 6
-const gridN = fieldSize / 4
+const gridN = fieldSize / gridStep
 const gridOrigin = (fieldSize - gridStep) / 2
-const gridStep = 4.0
+const gridStep = 12
 
 type Nav struct {
 	blocked   [gridN * gridN]bool
@@ -45,7 +45,11 @@ func (n *Nav) walkable(x, z, margin float64) bool {
 }
 func (n *Nav) nearest(x, z float64) int {
 	id := gridIndex(x, z)
-	if !n.blocked[id] {
+	validStart := n.walkable(x, z, 3.8)
+	reachable := func(i int) bool {
+		return !n.blocked[i] && (!validStart || n.line(Vec{x, z}, gridPoint(i)))
+	}
+	if reachable(id) {
 		return id
 	}
 	best := -1
@@ -56,7 +60,7 @@ func (n *Nav) nearest(x, z float64) int {
 		}
 		p := gridPoint(i)
 		v := dist(x, z, p.X, p.Z)
-		if v < d {
+		if v < d && reachable(i) {
 			best = i
 			d = v
 		}
@@ -64,15 +68,8 @@ func (n *Nav) nearest(x, z float64) int {
 	return best
 }
 func (n *Nav) line(a, b Vec) bool {
-	d := dist(a.X, a.Z, b.X, b.Z)
-	steps := int(d/1.8) + 1
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		if !n.walkable(a.X+(b.X-a.X)*t, a.Z+(b.Z-a.Z)*t, 3.8) {
-			return false
-		}
-	}
-	return true
+	limit := float64(fieldSize/2 - 4)
+	return math.Abs(a.X) <= limit && math.Abs(a.Z) <= limit && math.Abs(b.X) <= limit && math.Abs(b.Z) <= limit && n.clearSegment(a.X, a.Z, b.X, b.Z, 3.8)
 }
 func (n *Nav) path(x, z, tx, tz float64) []Vec {
 	a := Vec{x, z}
@@ -131,6 +128,9 @@ func (n *Nav) path(x, z, tx, tz float64) []Vec {
 				if dx != 0 && dz != 0 && (n.blocked[id+dx] || n.blocked[id+dz*gridN]) {
 					continue
 				}
+				if !n.line(gridPoint(id), gridPoint(next)) {
+					continue
+				}
 				v := score[id] + math.Hypot(float64(dx), float64(dz))*gridStep
 				if v < score[next] {
 					score[next] = v
@@ -151,12 +151,9 @@ func (n *Nav) path(x, z, tx, tz float64) []Vec {
 		}
 		rev = append(rev, gridPoint(id))
 	}
-	path := make([]Vec, 0, len(rev))
+	path := []Vec{gridPoint(start)}
 	for i := len(rev) - 2; i >= 0; i-- {
 		path = append(path, rev[i])
-	}
-	if len(path) == 0 {
-		path = append(path, gridPoint(end))
 	}
 	if n.line(path[len(path)-1], b) {
 		path = append(path, b)

@@ -28,6 +28,10 @@ func weaponReach(kind string) float64 {
 
 // Navigation's 3.8 m formation margin must not obstruct individual weapons.
 func (n *Nav) clearShot(ax, az, bx, bz float64) bool {
+	return n.clearSegment(ax, az, bx, bz, .03)
+}
+
+func (n *Nav) clearSegment(ax, az, bx, bz, margin float64) bool {
 	dx, dz := bx-ax, bz-az
 	d2 := dx*dx + dz*dz
 	for _, o := range n.obstacles {
@@ -36,7 +40,7 @@ func (n *Nav) clearShot(ax, az, bx, bz float64) bool {
 			t = clamp(((o.X-ax)*dx+(o.Z-az)*dz)/d2, 0, 1)
 		}
 		x, z := ax+t*dx-o.X, az+t*dz-o.Z
-		r := o.R + .03
+		r := o.R + margin
 		if x*x+z*z < r*r {
 			return false
 		}
@@ -76,10 +80,11 @@ func (g *Game) contactFor(s *Squad, a *SoldierBody, reach, sn, cs float64) unitC
 		for z := lo / crowdGridN; z <= hi/crowdGridN; z++ {
 			for x := lo % crowdGridN; x <= hi%crowdGridN; x++ {
 				cell := x + z*crowdGridN
-				if g.crowdOwners[cell] & ^uint8(1<<s.Owner) == 0 {
+				bucket := g.bucket(cell)
+				if bucket.owners & ^uint8(1<<s.Owner) == 0 {
 					continue
 				}
-				for i := g.crowdHeads[cell]; i >= 0; i = g.bodies[i].Next {
+				for i := int(bucket.head) - 1; i >= 0; i = g.bodies[i].Next {
 					b := g.bodies[i]
 					if b.Ready && b.Squad.Alive > 0 && b.Squad.Owner != s.Owner {
 						consider(unitContact{to: b, x: b.X, z: b.Z}, b.Radius, b.Squad.ID)

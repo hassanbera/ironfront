@@ -51,7 +51,8 @@ func TestBotFormationUsesPlayerReformCost(t *testing.T) {
 	p := g.Players[0]
 	p.Bot = true
 	s := g.Squads[0]
-	s.X, s.Z, s.Formation = -38, 0, 0 // forest
+	forest := rules.Maps[0].Zones[0]
+	s.X, s.Z, s.Formation = forest.X, forest.Z, 0
 	g.Time = 10
 	g.bots()
 	if s.Formation != 2 || s.Reform != 11.4 {

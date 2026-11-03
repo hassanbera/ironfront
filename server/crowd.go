@@ -75,27 +75,38 @@ func crowdCell(x, z float64) int {
 	return max(0, min(crowdGridN-1, int((x+crowdGridN*1.5)/3))) + max(0, min(crowdGridN-1, int((z+crowdGridN*1.5)/3)))*crowdGridN
 }
 
-func (g *Game) rebuildCrowdGrid() {
-	if !g.crowdInitialized {
-		for i := range g.crowdHeads {
-			g.crowdHeads[i] = -1
-		}
-		g.crowdInitialized = true
+// Zero is an empty cell. Rows are allocated only when an army visits them.
+type crowdBucket struct {
+	head   uint16
+	owners uint8
+}
+
+func (g *Game) bucket(cell int) crowdBucket {
+	if row := g.crowdRows[cell/crowdGridN]; row != nil {
+		return row[cell%crowdGridN]
 	}
+	return crowdBucket{}
+}
+
+func (g *Game) rebuildCrowdGrid() {
 	// Only occupied cells need clearing between solver passes.
 	for _, cell := range g.crowdCells {
-		g.crowdHeads[cell] = -1
-		g.crowdOwners[cell] = 0
+		g.crowdRows[cell/crowdGridN][cell%crowdGridN] = crowdBucket{}
 	}
 	g.crowdCells = g.crowdCells[:0]
 	for i, b := range g.bodies {
 		cell := crowdCell(b.X, b.Z)
-		if g.crowdHeads[cell] < 0 {
+		z := cell / crowdGridN
+		if g.crowdRows[z] == nil {
+			g.crowdRows[z] = make([]crowdBucket, crowdGridN)
+		}
+		bucket := &g.crowdRows[z][cell%crowdGridN]
+		if bucket.head == 0 {
 			g.crowdCells = append(g.crowdCells, cell)
 		}
-		g.crowdOwners[cell] |= 1 << b.Squad.Owner
-		b.Next = g.crowdHeads[cell]
-		g.crowdHeads[cell] = i
+		bucket.owners |= 1 << b.Squad.Owner
+		b.Next = int(bucket.head) - 1
+		bucket.head = uint16(i + 1)
 	}
 }
 
@@ -191,7 +202,7 @@ func (g *Game) stepCrowd(dt float64) {
 			cx, cz := cell%crowdGridN, cell/crowdGridN
 			for z := max(0, cz-1); z <= min(crowdGridN-1, cz+1); z++ {
 				for x := max(0, cx-1); x <= min(crowdGridN-1, cx+1); x++ {
-					for j := g.crowdHeads[x+z*crowdGridN]; j >= 0; j = g.bodies[j].Next {
+					for j := int(g.bucket(x+z*crowdGridN).head) - 1; j >= 0; j = g.bodies[j].Next {
 						if j <= i {
 							continue
 						}
@@ -246,7 +257,7 @@ func (g *Game) heroSpace(h *Hero, x, z float64) bool {
 	if len(g.bodies) > 0 {
 		for zz := max(0, cz-1); zz <= min(crowdGridN-1, cz+1); zz++ {
 			for xx := max(0, cx-1); xx <= min(crowdGridN-1, cx+1); xx++ {
-				for i := g.crowdHeads[xx+zz*crowdGridN]; i >= 0; i = g.bodies[i].Next {
+				for i := int(g.bucket(xx+zz*crowdGridN).head) - 1; i >= 0; i = g.bodies[i].Next {
 					b := g.bodies[i]
 					if !b.Ready || b.Squad.Alive == 0 {
 						continue

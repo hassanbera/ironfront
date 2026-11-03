@@ -297,18 +297,29 @@ func TestFullBotMatchesStayFinite(t *testing.T) {
 		for _, p := range g.Players {
 			p.Bot = true
 		}
-		for i := 0; i < 24001 && g.Phase == "battle"; i++ {
+		var firstPost [4]float64
+		for i := 0; i <= rules.MatchMinutes*60*20 && g.Phase == "battle"; i++ {
 			g.step(.05)
+			for _, post := range g.Outposts {
+				if post.Owner >= 0 && firstPost[post.Owner] == 0 {
+					firstPost[post.Owner] = g.Time
+				}
+			}
 		}
 		if g.Phase != "finished" {
 			t.Fatalf("map %d match never finished", mapID)
+		}
+		for owner, at := range firstPost {
+			if at == 0 {
+				t.Fatalf("map %d bot %d never took a post", mapID, owner)
+			}
 		}
 		for _, s := range g.Squads {
 			if !finite(s.X) || !finite(s.Z) || !finite(s.HP) || s.Alive < 0 || s.Alive > 25 {
 				t.Fatalf("invalid state %+v", s)
 			}
 		}
-		t.Logf("map=%d winner=%d squads=%d time=%.0f", mapID, g.Winner, len(g.Squads), g.Time)
+		t.Logf("map=%d winner=%d squads=%d time=%.0f first posts %.0f", mapID, g.Winner, len(g.Squads), g.Time, firstPost)
 	}
 }
 func BenchmarkFourPlayerTick(b *testing.B) {

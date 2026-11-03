@@ -152,7 +152,7 @@ func TestCrowdGridClearsVacatedCellsAndOwnerMasks(t *testing.T) {
 	contactBody(b, 0, 60, 60)
 	contactBody(b, 1, 65, 65)
 	g.rebuildCrowdGrid()
-	if g.crowdOwners[oldCell]&(1<<b.Owner) != 0 {
+	if g.bucket(oldCell).owners&(1<<b.Owner) != 0 {
 		t.Fatal("stale enemy owner bit")
 	}
 	if g.hasMeleeContact(a) {

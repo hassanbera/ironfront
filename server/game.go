@@ -778,7 +778,7 @@ func (g *Game) bots() {
 			if target >= 1000 {
 				order = "attack"
 			}
-			if best < math.MaxFloat64 {
+			if best < math.MaxFloat64 && !(s.Order == order && s.Target == target && s.TargetX == tx && s.TargetZ == tz && len(s.Path) > 0) {
 				g.command(p.ID, Command{Type: "order", IDs: []int{s.ID}, Order: order, X: tx, Z: tz, Target: target})
 			}
 			terrain := g.terrain(s.X, s.Z)
@@ -816,7 +816,7 @@ func (g *Game) checkVictory() {
 		g.Phase = "finished"
 		g.Winner = last
 	}
-	if g.Time >= 1200 {
+	if g.Time >= float64(rules.MatchMinutes*60) {
 		best := -1.0
 		g.Winner = -1
 		for _, p := range g.Players {
