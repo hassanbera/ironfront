@@ -20,6 +20,7 @@ type Model = {
   meta: Metadata;
   batches: Map<string, Batch>;
   material: T.MeshStandardMaterial;
+  duelMaterial?: T.MeshStandardMaterial;
   depth: T.MeshDepthMaterial;
   texture: T.DataTexture;
   atlas: T.Texture;
@@ -66,8 +67,18 @@ export class Characters {
   private disposed = false;
   private eye = new T.Vector3();
   private closeCombat = false;
+  private duelTextures: T.Texture[] = [];
 
   async load() {
+    const loader = new T.TextureLoader();
+    const [color, finish, normal] = await Promise.all(
+      ["color", "finish", "normal"].map((kind) =>
+        loader.loadAsync(`/assets/characters/duel-${kind}.png`),
+      ),
+    );
+    this.duelTextures = [color, finish, normal];
+    for (const texture of this.duelTextures) texture.flipY = false;
+    color.colorSpace = T.SRGBColorSpace;
     await Promise.all(
       ["knight", "viking", "ranger"].map(async (name) => {
         const prefix = `/assets/characters/${name}`;
@@ -106,6 +117,7 @@ export class Characters {
         const inject = (
           shader: Parameters<T.Material["onBeforeCompile"]>[0],
           surface: boolean,
+          duel = false,
         ) => {
           shader.uniforms.poseAtlas = { value: texture };
           shader.uniforms.poseSize = {
@@ -177,7 +189,8 @@ export class Characters {
             );
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <color_fragment>",
-              `
+              duel ? `diffuseColor.rgb *= vPaint.rgb;
+                diffuseColor.rgb = mix(diffuseColor.rgb,vec3(1.0,.75,.38),vHit*.45);` : `
             if(vPaint.a > .5 && vPaint.a < 1.5) diffuseColor.rgb = vPaint.rgb;
             #ifdef USE_COLOR
               bool coloredCloth = (diffuseColor.g > diffuseColor.r*1.2 && diffuseColor.g > diffuseColor.b*1.2) ||
@@ -196,10 +209,21 @@ export class Characters {
         depth.onBeforeCompile = (s) => inject(s, false);
         material.customProgramCacheKey = () => "ironfront-rigged-surface-v1";
         depth.customProgramCacheKey = () => "ironfront-rigged-shadow-v1";
+        let duelMaterial: T.MeshStandardMaterial | undefined;
+        if (meta.geometries.duelBody) {
+          duelMaterial = new T.MeshStandardMaterial({
+            map: color, roughnessMap: finish, metalnessMap: finish,
+            roughness: 1, metalness: 1, normalMap: normal,
+            normalScale: new T.Vector2(.55, .55),
+          });
+          duelMaterial.onBeforeCompile = (s) => inject(s, true, true);
+          duelMaterial.customProgramCacheKey = () => "ironfront-duel-surface-v1";
+        }
         const model: Model = {
           meta,
           batches: new Map(),
           material,
+          duelMaterial,
           depth,
           texture,
           atlas,
@@ -236,7 +260,8 @@ export class Characters {
             1,
           ).setUsage(T.DynamicDrawUsage);
           geo.setAttribute("visibility", visibility);
-          const mesh = new T.InstancedMesh(geo, material, CAPACITY);
+          const surface = kind === "duelBody" || kind === "duelSword" ? duelMaterial! : material;
+          const mesh = new T.InstancedMesh(geo, surface, CAPACITY);
           mesh.name = `soldiers-${name}-${kind}`;
           mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
           mesh.instanceColor = new T.InstancedBufferAttribute(
@@ -319,7 +344,8 @@ export class Characters {
         : distance > (this.closeCombat ? 144 : 625)
           ? "bodyMid"
           : "body";
-    for (const kind of [detail, actor.weapon]) {
+    const body = actor.weapon === "duelSword" && detail === "body" ? "duelBody" : detail;
+    for (const kind of [body, actor.weapon]) {
       const batch =
         model.batches.get(kind) ||
         (kind.startsWith("body") ? model.batches.get("body") : undefined);
@@ -362,11 +388,14 @@ export class Characters {
         batch.mesh.dispose();
       }
       model.material.dispose();
+      model.duelMaterial?.dispose();
       model.depth.dispose();
       model.texture.dispose();
       model.atlas.dispose();
     }
     this.models.clear();
+    for (const texture of this.duelTextures) texture.dispose();
+    this.duelTextures = [];
     this.blends.clear();
     this.group.clear();
   }
@@ -374,6 +403,7 @@ export class Characters {
 
 export function outfit(owner: number, kind: string, heroClass = -1) {
   const ranged = kind === "archer" || kind === "horseArcher" || heroClass === 2;
+  const duelSword = kind === "sword" && ((owner === 3 && heroClass === 0) || (owner === 0 && heroClass < 0));
   return {
     model:
       kind === "axe" || kind === "berserker"
@@ -387,7 +417,7 @@ export function outfit(owner: number, kind: string, heroClass = -1) {
             : owner === 1
               ? "viking"
               : "ranger",
-    weapon: ranged
+    weapon: duelSword ? "duelSword" : ranged
       ? "bow"
       : kind === "berserker"
         ? "dual"

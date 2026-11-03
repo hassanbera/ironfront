@@ -2,6 +2,7 @@ import * as T from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Characters, outfit } from "./characters";
 import { rules } from "./types";
+const duel = new URLSearchParams(location.search).has("duel");
 
 document.head.insertAdjacentHTML(
   "beforeend",
@@ -28,6 +29,16 @@ const motions: [string, string][] = [
   ["jump", "Zıpla"],
   ["death", "Düş"],
 ];
+const studyLink = document.createElement("a");
+studyLink.href = duel ? "/drill.html" : "/drill.html?duel";
+studyLink.textContent = duel ? "← Tüm birlikler" : "Turks ve Knights · İkili talim";
+document.querySelector("header")!.append(studyLink);
+if (duel) {
+  document.querySelector("h1")!.textContent = "KILIÇ VE KALKAN";
+  document.querySelector<HTMLElement>("#faction")!.hidden = true;
+  document.querySelector<HTMLElement>("#crowd")!.hidden = true;
+  motions.push(["backslash", "Çapraz kes"], ["stab", "Sapla"], ["blockHit", "Kalkan darbesi"]);
+}
 const nav = document.querySelector("#motions")!;
 let motion = "idle",
   faction = 0,
@@ -80,6 +91,7 @@ const camera = new T.PerspectiveCamera(40, 1, 0.1, 160);
 camera.position.set(6, 5.4, 14.5);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1, 0);
+if (duel) camera.position.set(.6, 2.35, 6.1);
 controls.minDistance = 3;
 controls.maxDistance = 65;
 controls.maxPolarAngle = Math.PI * 0.48;
@@ -128,6 +140,11 @@ const nodes = labels.map((t) => {
   document.body.append(el);
   return el;
 });
+if (duel) {
+  nodes[0].textContent = "TURKS · MUHAFIZ";
+  nodes[1].textContent = "KNIGHTS · AĞIR PİYADE";
+  nodes.slice(2).forEach((node) => (node.hidden = true));
+}
 document.querySelector("#crowd")!.addEventListener("click", (e) => {
   crowd = !crowd;
   (e.target as HTMLElement).textContent = crowd ? "Yakın incele" : "400 asker";
@@ -148,20 +165,20 @@ function animate(now: number) {
   if (!paused) time += dt;
   chars.begin(time, camera.position);
   if (loaded)
-    for (let i = 0; i < (crowd ? 400 : 5); i++) {
-      const kind = kinds[i % 5],
-        owner = crowd ? Math.floor(i / 100) : faction,
-        gear = outfit(owner, kind),
+    for (let i = 0; i < (duel ? 2 : crowd ? 400 : 5); i++) {
+      const kind = duel ? "sword" : kinds[i % 5],
+        owner = duel ? (i === 0 ? 3 : 0) : crowd ? Math.floor(i / 100) : faction,
+        gear = outfit(owner, kind, duel && i === 0 ? 0 : -1),
         action = motion === "attack" ? gear.attack : motion;
       const duration = chars.duration(gear.model, action),
         once =
-          ["attack", "hit", "death"].includes(motion) ||
+          ["attack", "hit", "death", "backslash", "stab", "blockHit"].includes(motion) ||
           motion.startsWith("dodge"),
         cycle = duration + 0.7;
       const phase = once
         ? (time - started) % cycle
         : time + (crowd ? i * 0.173 : 0);
-      const x = crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
+      const x = duel ? (i - .5) * 2.15 : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
         z = crowd ? (Math.floor(i / 20) - 9.5) * 1.45 : 0;
       chars.draw({
         id: String(i),
@@ -169,7 +186,7 @@ function animate(now: number) {
         x,
         y: 0,
         z,
-        facing: 0,
+        facing: duel ? (i === 0 ? .80 : -.80) : 0,
         color: colors[owner],
         motion: action,
         phase,

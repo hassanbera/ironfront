@@ -186,6 +186,7 @@ export class World {
     kind: string;
     at: number;
     hero: boolean;
+    heroClass?: number;
   }> = [];
   private deathID = 0;
   private heroMotion = new Map<
@@ -947,6 +948,7 @@ export class World {
             kind: old.class === 2 ? "archer" : "sword",
             at: this.time,
             hero: true,
+            heroClass: old.class,
           });
       }
       if (this.fallen.length > 96)
@@ -1801,7 +1803,7 @@ export class World {
         )
           continue;
         const age = Math.max(0, this.time - f.at),
-          gear = outfit(f.owner, f.kind);
+          gear = outfit(f.owner, f.kind, f.heroClass);
         this.characters.draw({
           id: f.id,
           ...gear,

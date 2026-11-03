@@ -17,7 +17,10 @@ To regenerate, place the three GLBs and the original `LICENSE.txt` in a local so
 
 ```sh
 node scripts/bake-characters.mjs /path/to/source-directory
+blender --background --python art/duel/build.py
 node scripts/validate-character-assets.mjs
 ```
 
 Only those source files are read. Generated `.json`, `.bin`, `.png` and provenance files are written to this directory. Commit generated assets together with converter changes; reload test clients after rebuilding the complete asset set.
+
+The duel pack builds two original socketed sword/shield sets and three shared procedural PNG maps in Blender Python. Its near-body UVs and material colours reference the existing CC0 bodies. The two fighters use a red round kalkan and curved blade, or a heater shield and straight sword. Blender source is in `art/duel/`. Launch `/drill.html?duel` to inspect them together.
