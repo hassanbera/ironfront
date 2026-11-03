@@ -29,6 +29,43 @@ def rotate_bone(rig,name,axis,degrees):
     bone.matrix=result
     bpy.context.view_layer.update()
 
+def key_pose(rig,action,frame,shrink_head=False):
+    saved=[(p,p.location.copy(),p.rotation_quaternion.copy(),p.scale.copy()) for p in rig.pose.bones]
+    rig.animation_data.action=action
+    for bone,loc,rot,scale in saved:
+        bone.location, bone.rotation_quaternion, bone.scale=loc,rot,scale
+        if shrink_head and bone.name=='head': bone.scale*=.60
+        for prop in ('location','rotation_quaternion','scale'):
+            bone.keyframe_insert(data_path=prop,frame=frame,group=bone.name)
+
+def rising_cut(scene,rig,slots,source,poses,tip,source_contact,beat):
+    # Lift from the sword side with the edge leading, then open the wrist
+    # for the return cut. Rotate around the blade tip to retain its contact.
+    action=bpy.data.actions.new(rig.name+' / risingCut')
+    action.use_fake_user=True
+    baked=[]
+    impact=beat['impact']
+    for i in range(26):
+        t=i/25
+        s=curve(t,[(0,.79),(.22,.56),(impact,source_contact),(.68,.29),(1,.22)])
+        rig.animation_data.action=source
+        frame=s*source.frame_range[1]
+        scene.frame_set(int(frame),subframe=frame-int(frame))
+        source_matrices={p.name:p.matrix.copy() for p in rig.pose.bones}
+        f=s*(len(poses)-1)
+        lo=int(f)
+        pose=poses[lo].astype(float)*(1-(f-lo))+poses[min(lo+1,len(poses)-1)].astype(float)*(f-lo)
+        target=Vector((TO_GAME.T @ pose[-3].T @ [*tip,1])[:3])
+        roll=curve(t,[(0,22),(.22,105),(impact,142),(.68,110),(1,12)])
+        for name,share in [('lowerarm.r',.35),('hand.r',.65)]:
+            axis=(target-rig.pose.bones[name].matrix.translation).normalized()
+            rotate_bone(rig,name,axis,roll*share)
+        rotate_bone(rig,'upperarm.l','X',-8*math.sin(math.pi*t))
+        delta=np.stack([TO_GAME @ np.asarray(rig.pose.bones[n].matrix @ source_matrices[n].inverted_safe()) @ TO_GAME.T for n in slots])
+        baked.append((delta @ pose.transpose(0,2,1)).transpose(0,2,1).astype('<f2'))
+        key_pose(rig,action,t*beat['duration']*24)
+    return action,np.stack(baked)
+
 def accent(rig, motion, t, impact, turk):
     if motion in CUTS:
         reverse=-1 if motion=='stab' else 1
@@ -88,7 +125,8 @@ def run(out, source_dir):
         atlas=np.fromfile(pose_path,dtype='<f2').reshape(-1,len(slots),4,4)[:end]
         chunks=[atlas]; next_frame=end
         authored_clips={}
-        impact=.42 if model=='ranger' else json.loads((out.parents[3]/'server/rules.json').read_text())['combat']['impactFraction']
+        rules=json.loads((out.parents[3]/'server/rules.json').read_text())
+        impact=.42 if model=='ranger' else rules['combat']['impactFraction']
         for motion,source_name in {**{k:v[0] for k,v in CUTS.items()},**OTHERS}.items():
             base=clips[motion]
             source=next(a for a in actions if a.name.startswith(source_name+'_Rig'))
@@ -133,20 +171,21 @@ def run(out, source_dir):
                 result=np.stack([delta[n] for n in slots])@src_pose.transpose(0,2,1)
                 baked.append(result.transpose(0,2,1).astype('<f2'))
                 # Source keys are never edited. Key the sampled local pose into the new action.
-                saved=[(p,p.location.copy(),p.rotation_quaternion.copy(),p.scale.copy()) for p in rig.pose.bones]
-                rig.animation_data.action=authored
-                for bone,loc,rot,scale in saved:
-                    bone.location, bone.rotation_quaternion, bone.scale=loc,rot,scale
-                    if bone.name=='head': bone.scale*=.60
-                    for prop in ('location','rotation_quaternion','scale'):
-                        bone.keyframe_insert(data_path=prop,frame=t*base['duration']*24,group=bone.name)
+                key_pose(rig,authored,t*base['duration']*24,shrink_head=True)
             clips['duel_'+motion]={'start':next_frame,'frames':samples,'duration':base['duration']}
             next_frame+=samples
             chunks.append(np.stack(baked))
+            if motion=='backslash':
+                opening=rules['swordChain']['steps'][0]
+                rising,frames=rising_cut(scene,rig,slots,authored,chunks[-1],meta['duelBladeTip'],impact,opening)
+                authored_clips['risingCut']=rising
+                clips['duel_risingCut']={'start':next_frame,'frames':len(frames),'duration':opening['duration']}
+                chunks.append(frames)
+                next_frame+=len(frames)
         meta['frames']=next_frame
         np.concatenate(chunks).tofile(pose_path)
         meta_path.write_text(json.dumps(meta,separators=(',',':'))+'\n')
         rig.animation_data.action=authored_clips['slash']
         workshop[model]=(rig,authored_clips)
-        print(model, 'authored',len(CUTS)+len(OTHERS),'actions; contact phase',impact)
+        print(model, 'authored',len(authored_clips),'actions; contact phase',impact)
     return workshop

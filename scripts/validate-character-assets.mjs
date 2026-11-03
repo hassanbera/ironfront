@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { DataUtils } from '../frontend/node_modules/three/build/three.module.js';
 const root=new URL('../frontend/public/assets/characters/',import.meta.url);
+const rules=JSON.parse(await fs.readFile(new URL('../server/rules.json',import.meta.url),'utf8'));
 const summary=[];
 for(const name of ['knight','viking','ranger']){
   const meta=JSON.parse(await fs.readFile(new URL(name+'.json',root),'utf8'));
@@ -44,6 +45,18 @@ for(const name of ['knight','viking','ranger']){
     for (const motion of ['slash','backslash','stab','blockHit','hit','walk','run','dodgeLeft','dodgeRight']) {
       assert.equal(meta.animations['duel_'+motion]?.duration, meta.animations[motion].duration);
     }
+    const rising=meta.animations.duel_risingCut;
+    const opening=rules.swordChain.steps[0];
+    assert.equal(rising.duration,opening.duration);
+    function bladeTip(phase) {
+      const frame=rising.start+Math.round(phase*(rising.frames-1));
+      const socket=(frame*meta.bones+meta.bones-3)*32;
+      return [0,1,2].map(axis=>[...meta.duelBladeTip,1].reduce((sum,component,i)=>
+        sum+component*DataUtils.fromHalfFloat(poses.readUInt16LE(socket+2*(i*4+axis))),0));
+    }
+    const before=bladeTip(opening.impact-.08), contact=bladeTip(opening.impact), after=bladeTip(opening.impact+.08);
+    assert.ok(before[0]<-.5 && after[0]>.5 && after[1]>before[1]+.4, name+' rising cut must sweep up from the sword side');
+    assert.ok(Math.abs(contact[0])<.04 && contact[2]>1, name+' rising cut missed the server impact');
     for (const motion of ['slash','backslash']) {
       const clip = meta.animations['duel_'+motion];
       const impact = name === 'ranger' ? .42 : .45;
