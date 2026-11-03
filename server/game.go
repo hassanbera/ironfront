@@ -5,8 +5,11 @@ import (
 	"math"
 )
 
-var corners = []Vec{{-66, -66}, {-66, 66}, {66, -66}, {66, 66}}
-var posts = []Vec{{-30, -30}, {-30, 30}, {30, -30}, {30, 30}}
+var corners, posts [4]Vec
+
+func quadrants(offset float64) [4]Vec {
+	return [4]Vec{{-offset, -offset}, {-offset, offset}, {offset, -offset}, {offset, offset}}
+}
 
 func NewGame(code string, mapID, host int) *Game {
 	if mapID < 0 || mapID >= len(rules.Maps) {
@@ -200,7 +203,7 @@ func (g *Game) command(owner int, c Command) error {
 			}
 		}
 		for i, s := range selected {
-			tx, tz := clamp(c.X, -84, 84), clamp(c.Z, -84, 84)
+			tx, tz := clamp(c.X, -orderLimit, orderLimit), clamp(c.Z, -orderLimit, orderLimit)
 			if c.Order == "retreat" {
 				v := g.spawnPoint(owner, s.ID)
 				if g.mainBase(owner) == nil {

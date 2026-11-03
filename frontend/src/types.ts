@@ -140,18 +140,11 @@ export interface GameState {
   winner: number;
   tick: number;
 }
-export const corners = [
-  [-66, -66],
-  [-66, 66],
-  [66, -66],
-  [66, 66],
-];
-export const posts = [
-  [-30, -30],
-  [-30, 30],
-  [30, -30],
-  [30, 30],
-];
+export const fieldSize = rules.maps[0].size;
+export const fieldLimit = fieldSize/2 - 5;
+const quadrants = (r: number) => [[-r,-r],[-r,r],[r,-r],[r,r]];
+export const corners = quadrants(rules.deployment.base);
+export const posts = quadrants(rules.deployment.outpost);
 export function previewState(map = 0): GameState {
   return {
     type: "state",

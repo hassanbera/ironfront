@@ -8,7 +8,7 @@ import { swordLabels, swordMotion, swordPhase, swordSteps } from "./sword-chain"
 import { ActorVisibility } from "./actor-visibility";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
-  rules,
+  rules, fieldSize, fieldLimit, corners, posts,
   clamp,
   isMounted,
   isRanged,
@@ -116,7 +116,7 @@ export class World {
   preview = true;
   mapID = -1;
   focus = new THREE.Vector3(0, 0, 0);
-  distance = 190;
+  distance = fieldSize * 1.06;
   azimuth = 0.57;
   heroYaw = 0;
   heroPitch = 0.24;
@@ -256,10 +256,10 @@ export class World {
     sun.position.set(-38, 145, 28);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -110;
-    sun.shadow.camera.right = 110;
-    sun.shadow.camera.top = 110;
-    sun.shadow.camera.bottom = -110;
+    sun.shadow.camera.left = -fieldSize*.64;
+    sun.shadow.camera.right = fieldSize*.64;
+    sun.shadow.camera.top = fieldSize*.64;
+    sun.shadow.camera.bottom = -fieldSize*.64;
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 260;
     sun.shadow.bias = -0.0003;
@@ -487,10 +487,10 @@ export class World {
     );
     this.scene.fog = new THREE.Fog(
       grass ? "#263b34" : snow ? "#384d57" : "#4a3e34",
-      230,
-      450,
+      fieldSize*1.28,
+      fieldSize*2.5,
     );
-    const geo = new THREE.PlaneGeometry(180, 180, 100, 100);
+    const geo = new THREE.PlaneGeometry(m.size, m.size, 100, 100);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.getAttribute("position");
     const colors = [];
@@ -507,7 +507,7 @@ export class World {
       if (terrain === "marsh") hex = "#657f80";
       if (terrain === "pass") hex = "#c9ad7b";
       const path = Math.min(Math.abs(x - z), Math.abs(x + z));
-      if (path < 3.3 || Math.abs(Math.hypot(x, z) - 44) < 2)
+      if (path < 3.3 || Math.abs(Math.hypot(x, z) - rules.deployment.outpost*Math.SQRT2) < 2)
         hex = snow ? "#a4b4ae" : grass ? "#b5a685" : "#d7bb88";
       c.set(hex).multiplyScalar(0.92 + rand() * 0.16);
       colors.push(c.r, c.g, c.b);
@@ -525,7 +525,7 @@ export class World {
     land.receiveShadow = true;
     this.root.add(land);
     const pedestal = new THREE.Mesh(
-      new THREE.BoxGeometry(181, 5, 181),
+      new THREE.BoxGeometry(m.size+1, 5, m.size+1),
       new THREE.MeshStandardMaterial({
         color: snow ? "#4b6061" : "#3b4536",
         roughness: 1,
@@ -609,12 +609,12 @@ export class World {
       const side = i % 4,
         x =
           side < 2
-            ? (rand() - 0.5) * 175
-            : (side === 2 ? -1 : 1) * (79 + rand() * 9),
+            ? (rand() - 0.5) * (m.size-5)
+            : (side === 2 ? -1 : 1) * (m.size/2-11 + rand() * 9),
         z =
           side < 2
-            ? (side === 0 ? -1 : 1) * (79 + rand() * 9)
-            : (rand() - 0.5) * 175;
+            ? (side === 0 ? -1 : 1) * (m.size/2-11 + rand() * 9)
+            : (rand() - 0.5) * (m.size-5);
       trees.push({
         x,
         z,
@@ -653,9 +653,9 @@ export class World {
       stones,
     );
     for (let i = 0; i < 4; i++) {
-      const [x, z] = [i < 2 ? -66 : 66, i % 2 === 0 ? -66 : 66];
+      const [x, z] = corners[i];
       this.castle(i, x, z);
-      const [px, pz] = [i < 2 ? -30 : 30, i % 2 === 0 ? -30 : 30];
+      const [px, pz] = posts[i];
       this.outpost(i, px, pz);
     }
     for (let i = 0; i < 9; i++) {
@@ -663,11 +663,11 @@ export class World {
         new THREE.BoxGeometry(0.16, 0.1, 2),
         new THREE.MeshStandardMaterial({ color: "#c7bc92" }),
       );
-      g.position.set(-80 + i * 20, 0.1, 90.3);
+      g.position.set((i-4)*m.size/9, 0.1, m.size/2+.3);
       this.root.add(g);
       const h = g.clone();
       h.rotation.y = Math.PI / 2;
-      h.position.set(90.3, 0.1, -80 + i * 20);
+      h.position.set(m.size/2+.3, 0.1, (i-4)*m.size/9);
       this.root.add(h);
     }
   }
@@ -1984,14 +1984,14 @@ export class World {
       this.focus.x = clamp(
         this.focus.x +
           (x * Math.cos(this.azimuth) + z * Math.sin(this.azimuth)) * speed,
-        -85,
-        85,
+        -fieldLimit,
+        fieldLimit,
       );
       this.focus.z = clamp(
         this.focus.z +
           (-x * Math.sin(this.azimuth) + z * Math.cos(this.azimuth)) * speed,
-        -85,
-        85,
+        -fieldLimit,
+        fieldLimit,
       );
       if (this.keys.has("KeyQ")) this.azimuth += dt * 0.7;
       if (this.keys.has("KeyE")) this.azimuth -= dt * 0.7;
@@ -2269,7 +2269,7 @@ export class World {
       (e) => {
         e.preventDefault();
         if (!this.heroMode)
-          this.distance = clamp(this.distance + e.deltaY * 0.06, 25, 225);
+          this.distance = clamp(this.distance + e.deltaY * 0.06, 25, fieldSize*1.25);
       },
       { passive: false },
     );
@@ -2353,7 +2353,7 @@ export class World {
   }
   focusPoint(x: number, z: number) {
     this.focus.set(x, 0, z);
-    if (this.preview) this.distance = 190;
+    if (this.preview) this.distance = fieldSize * 1.06;
   }
   setQuality(q: string) {
     this.quality = q;

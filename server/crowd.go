@@ -4,7 +4,7 @@ import "math"
 
 // Lightweight circles, not rigid bodies. One reusable 3 m grid per room keeps
 // separation and hero collision local instead of testing every pair of soldiers.
-const crowdGridN = 64
+const crowdGridN = fieldSize/3 + 4
 const heroRadius = .65
 
 type SoldierBody struct {
@@ -72,7 +72,7 @@ func syncSlots(s *Squad, casualty int) {
 }
 
 func crowdCell(x, z float64) int {
-	return max(0, min(63, int((x+96)/3))) + max(0, min(63, int((z+96)/3)))*crowdGridN
+	return max(0, min(crowdGridN-1, int((x+crowdGridN*1.5)/3))) + max(0, min(crowdGridN-1, int((z+crowdGridN*1.5)/3)))*crowdGridN
 }
 
 func (g *Game) rebuildCrowdGrid() {
@@ -100,8 +100,8 @@ func (g *Game) rebuildCrowdGrid() {
 }
 
 func (g *Game) projectSoldier(b *SoldierBody) {
-	b.X = clamp(b.X, -85, 85)
-	b.Z = clamp(b.Z, -85, 85)
+	b.X = clamp(b.X, -fieldSize/2+5, fieldSize/2-5)
+	b.Z = clamp(b.Z, -fieldSize/2+5, fieldSize/2-5)
 	for _, o := range g.nav.obstacles {
 		dx, dz := b.X-o.X, b.Z-o.Z
 		r := o.R + b.Radius

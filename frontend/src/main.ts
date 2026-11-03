@@ -2,7 +2,7 @@ import "./style.css";
 import { World } from "./world";
 import { Network } from "./network";
 import {
-  rules,
+  rules, fieldSize, fieldLimit,
   previewState,
   esc,
   timeText,
@@ -298,7 +298,7 @@ function leaveGame() {
   world.selected = selected;
   world.heroMode = false;
   world.focusPoint(0, 0);
-  world.distance = 190;
+  world.distance = fieldSize * 1.06;
   world.azimuth = 0.57;
   document.body.className = "menu";
   $("modal-root").innerHTML = "";
@@ -585,8 +585,8 @@ function drawMinimap() {
         ? "#81938a"
         : "#948361";
   ctx.fillRect(0, 0, w, h);
-  const px = (x: number) => ((x + 90) / 180) * w,
-    pz = (z: number) => ((z + 90) / 180) * h;
+  const px = (x: number) => (x / map.size + .5) * w,
+    pz = (z: number) => (z / map.size + .5) * h;
   for (const v of map.zones) {
     ctx.fillStyle = (
       {
@@ -601,8 +601,8 @@ function drawMinimap() {
     ctx.ellipse(
       px(v.x),
       pz(v.z),
-      (v.rx / 180) * w,
-      (v.rz / 180) * h,
+      (v.rx / map.size) * w,
+      (v.rz / map.size) * h,
       0,
       0,
       Math.PI * 2,
@@ -623,8 +623,8 @@ function drawMinimap() {
     ctx.ellipse(
       px(o.x),
       pz(o.z),
-      (o.r / 180) * w,
-      (o.r / 180) * h,
+      (o.r / map.size) * w,
+      (o.r / map.size) * h,
       0,
       0,
       Math.PI * 2,
@@ -672,14 +672,14 @@ function drawMinimap() {
   ctx.strokeRect(
     px(world.focus.x - extent * 0.8),
     pz(world.focus.z - extent * 0.5),
-    ((extent * 1.6) / 180) * w,
-    (extent / 180) * h,
+    ((extent * 1.6) / map.size) * w,
+    (extent / map.size) * h,
   );
 }
 $("minimap").addEventListener("pointerdown", (e) => {
   const r = $("minimap").getBoundingClientRect();
-  const x = clamp(((e.clientX - r.left) / r.width) * 180 - 90, -85, 85),
-    z = clamp(((e.clientY - r.top) / r.height) * 180 - 90, -85, 85);
+  const x = clamp(((e.clientX - r.left) / r.width) * fieldSize - fieldSize/2, -fieldLimit, fieldLimit),
+    z = clamp(((e.clientY - r.top) / r.height) * fieldSize - fieldSize/2, -fieldLimit, fieldLimit);
   if (e.button === 2) {
     world.onOrder(x, z, -1, true);
     world.marker(x, z, true);

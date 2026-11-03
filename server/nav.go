@@ -2,7 +2,10 @@ package main
 
 import "math"
 
-const gridN = 45
+const fieldSize = 252
+const orderLimit = fieldSize/2 - 6
+const gridN = fieldSize / 4
+const gridOrigin = (fieldSize - gridStep) / 2
 const gridStep = 4.0
 
 type Nav struct {
@@ -23,12 +26,14 @@ func NewNav(m MapSpec) *Nav {
 	}
 	return n
 }
-func gridPoint(i int) Vec { return Vec{float64(i%gridN)*gridStep - 88, float64(i/gridN)*gridStep - 88} }
+func gridPoint(i int) Vec {
+	return Vec{float64(i%gridN)*gridStep - gridOrigin, float64(i/gridN)*gridStep - gridOrigin}
+}
 func gridIndex(x, z float64) int {
-	return int(clamp(math.Round((x+88)/gridStep), 0, gridN-1)) + int(clamp(math.Round((z+88)/gridStep), 0, gridN-1))*gridN
+	return int(clamp(math.Round((x+gridOrigin)/gridStep), 0, gridN-1)) + int(clamp(math.Round((z+gridOrigin)/gridStep), 0, gridN-1))*gridN
 }
 func (n *Nav) walkable(x, z, margin float64) bool {
-	if math.Abs(x) > 86 || math.Abs(z) > 86 {
+	if math.Abs(x) > fieldSize/2-4 || math.Abs(z) > fieldSize/2-4 {
 		return false
 	}
 	for _, o := range n.obstacles {
@@ -71,7 +76,7 @@ func (n *Nav) line(a, b Vec) bool {
 }
 func (n *Nav) path(x, z, tx, tz float64) []Vec {
 	a := Vec{x, z}
-	b := Vec{clamp(tx, -84, 84), clamp(tz, -84, 84)}
+	b := Vec{clamp(tx, -orderLimit, orderLimit), clamp(tz, -orderLimit, orderLimit)}
 	if n.line(a, b) {
 		return []Vec{b}
 	}

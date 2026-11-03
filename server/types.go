@@ -41,6 +41,7 @@ type MapSpec struct {
 	Obstacles                               []Obstacle
 }
 type Rules struct {
+	Deployment struct{ Base, Outpost float64 }
 	SwordChain struct {
 		Steps                [3]struct{ Duration, Impact float64 }
 		Recovery, LinkWindow float64
@@ -57,6 +58,7 @@ func init() {
 	if err := json.Unmarshal(rulesJSON, &rules); err != nil {
 		panic(err)
 	}
+	corners, posts = quadrants(rules.Deployment.Base), quadrants(rules.Deployment.Outpost)
 }
 
 type Vec struct {

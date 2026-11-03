@@ -48,15 +48,16 @@
     {"id":1,"name":"Düellocu","description":"260 can · hızlı hücum · Q: yarma","hp":260,"damage":58,"speed":7.5,"cooldown":9},
     {"id":2,"name":"Akıncı","description":"220 can · uzun menzil · Q: yaylım","hp":220,"damage":32,"speed":8,"cooldown":10}
   ],
+  "deployment":{"base":96,"outpost":42},
   "maps": [
-    {"id":0,"name":"Sınır Vadisi","subtitle":"Ormanlar, tepeler ve açık cepheler","biome":"grass","size":180,"tag":"DENGELİ","description":"Orman süvariyi yavaşlatır. Tepelerdeki okçular menzil kazanır. Merkez, dört cephenin kesişim noktası.",
-      "zones":[{"x":-38,"z":0,"rx":19,"rz":24,"kind":"forest"},{"x":38,"z":0,"rx":19,"rz":24,"kind":"forest"},{"x":0,"z":-37,"rx":24,"rz":16,"kind":"hill"},{"x":0,"z":37,"rx":24,"rz":16,"kind":"hill"}],
-      "obstacles":[{"x":0,"z":0,"r":7},{"x":-18,"z":-12,"r":4},{"x":18,"z":12,"r":4}]},
-    {"id":1,"name":"Kızıl Geçit","subtitle":"Kum denizi ve dar boğazlar","biome":"desert","size":180,"tag":"DAR GEÇİTLER","description":"Geçitlerde geniş dizilimler yavaşlar. Kumda deve süvarileri hızlanır. İki kanadı aynı anda kontrol et.",
-      "zones":[{"x":0,"z":0,"rx":84,"rz":84,"kind":"sand"},{"x":0,"z":-27,"rx":12,"rz":24,"kind":"pass"},{"x":0,"z":27,"rx":12,"rz":24,"kind":"pass"},{"x":-36,"z":0,"rx":20,"rz":14,"kind":"hill"},{"x":36,"z":0,"rx":20,"rz":14,"kind":"hill"}],
-      "obstacles":[{"x":-21,"z":-18,"r":10},{"x":21,"z":-18,"r":10},{"x":-21,"z":18,"r":10},{"x":21,"z":18,"r":10},{"x":0,"z":0,"r":6}]},
-    {"id":2,"name":"Kuzey Surları","subtitle":"Donmuş orman ve bataklık vadiler","biome":"snow","size":180,"tag":"SAVUNMA HATLARI","description":"Bataklıkta ağır birlikler yavaşlar. Viking piyadeleri ormanda çeviktir. Tepeler menzilli savunmaya uygundur.",
-      "zones":[{"x":0,"z":-34,"rx":18,"rz":27,"kind":"forest"},{"x":0,"z":34,"rx":18,"rz":27,"kind":"forest"},{"x":-35,"z":0,"rx":26,"rz":13,"kind":"marsh"},{"x":35,"z":0,"rx":26,"rz":13,"kind":"marsh"},{"x":-36,"z":-38,"rx":13,"rz":13,"kind":"hill"},{"x":36,"z":38,"rx":13,"rz":13,"kind":"hill"}],
-      "obstacles":[{"x":0,"z":0,"r":8},{"x":-55,"z":0,"r":5},{"x":55,"z":0,"r":5}]}
+    {"id":0,"name":"Sınır Vadisi","subtitle":"Ormanlar, tepeler ve açık cepheler","biome":"grass","size":252,"tag":"DENGELİ","description":"Orman süvariyi yavaşlatır. Tepelerdeki okçular menzil kazanır. Merkez, dört cephenin kesişim noktası.",
+      "zones":[{"x":-53.2,"z":0,"rx":26.6,"rz":33.6,"kind":"forest"},{"x":53.2,"z":0,"rx":26.6,"rz":33.6,"kind":"forest"},{"x":0,"z":-51.8,"rx":33.6,"rz":22.4,"kind":"hill"},{"x":0,"z":51.8,"rx":33.6,"rz":22.4,"kind":"hill"}],
+      "obstacles":[{"x":0,"z":0,"r":9.8},{"x":-25.2,"z":-16.8,"r":5.6},{"x":25.2,"z":16.8,"r":5.6}]},
+    {"id":1,"name":"Kızıl Geçit","subtitle":"Kum denizi ve dar boğazlar","biome":"desert","size":252,"tag":"DAR GEÇİTLER","description":"Geçitlerde geniş dizilimler yavaşlar. Kumda deve süvarileri hızlanır. İki kanadı aynı anda kontrol et.",
+      "zones":[{"x":0,"z":0,"rx":117.6,"rz":117.6,"kind":"sand"},{"x":0,"z":-37.8,"rx":16.8,"rz":33.6,"kind":"pass"},{"x":0,"z":37.8,"rx":16.8,"rz":33.6,"kind":"pass"},{"x":-50.4,"z":0,"rx":28,"rz":19.6,"kind":"hill"},{"x":50.4,"z":0,"rx":28,"rz":19.6,"kind":"hill"}],
+      "obstacles":[{"x":-29.4,"z":-25.2,"r":14},{"x":29.4,"z":-25.2,"r":14},{"x":-29.4,"z":25.2,"r":14},{"x":29.4,"z":25.2,"r":14},{"x":0,"z":0,"r":8.4}]},
+    {"id":2,"name":"Kuzey Surları","subtitle":"Donmuş orman ve bataklık vadiler","biome":"snow","size":252,"tag":"SAVUNMA HATLARI","description":"Bataklıkta ağır birlikler yavaşlar. Viking piyadeleri ormanda çeviktir. Tepeler menzilli savunmaya uygundur.",
+      "zones":[{"x":0,"z":-47.6,"rx":25.2,"rz":37.8,"kind":"forest"},{"x":0,"z":47.6,"rx":25.2,"rz":37.8,"kind":"forest"},{"x":-49,"z":0,"rx":36.4,"rz":18.2,"kind":"marsh"},{"x":49,"z":0,"rx":36.4,"rz":18.2,"kind":"marsh"},{"x":-50.4,"z":-53.2,"rx":18.2,"rz":18.2,"kind":"hill"},{"x":50.4,"z":53.2,"rx":18.2,"rz":18.2,"kind":"hill"}],
+      "obstacles":[{"x":0,"z":0,"r":11.2},{"x":-77,"z":0,"r":7},{"x":77,"z":0,"r":7}]}
   ]
 }
