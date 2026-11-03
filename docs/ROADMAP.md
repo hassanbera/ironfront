@@ -4,6 +4,8 @@ Durum tarihi: 30 Ekim 2026. Bu dosya yapılmış işleri ve gelecek değişiklik
 
 ## Tamamlanan ilk sürüm
 
+- [x] Turks kılıç-kalkan Muhafızı ve Knights ağır piyadesi için ortak anatomik ölçek, düzeltilmiş kılıç eğrisi ve üç mesafe seviyesinde özgün kıyafetler. [İkili talim ve ölçümler](DUEL_VALIDATION.md).
+
 - [x] Go otoriter sunucu; dört oyunculu oda, host başlangıcı, bot antrenmanı, kısa kopmada token ile geri dönüş.
 - [x] Three.js 3D RTS; birlik/kutu seçimi, grup emri, dizilim, minimap, savaş arayüzü.
 - [x] Dört faction, faction başına dört birlik sınıfı ve üç dizilim; üç arazi haritası.
