@@ -2,6 +2,7 @@ import * as T from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Characters, outfit } from "./characters";
 import { rules } from "./types";
+import { swordLabels, swordMotion, swordPhase, swordSteps } from "./sword-chain";
 const duel = new URLSearchParams(location.search).has("duel");
 
 document.head.insertAdjacentHTML(
@@ -37,9 +38,10 @@ if (duel) {
   document.querySelector("h1")!.textContent = "KILIÇ VE KALKAN";
   document.querySelector<HTMLElement>("#faction")!.hidden = true;
   document.querySelector<HTMLElement>("#crowd")!.hidden = true;
-  motions.push(["backslash", "Çapraz kes"], ["stab", "Sapla"], ["blockHit", "Kalkan darbesi"]);
+  motions.push(["doubleCut", "Çift kesiş"], ["swordChain", "Üçlü seri"], ["blockHit", "Kalkan darbesi"]);
 }
 const nav = document.querySelector("#motions")!;
+const poseLabel = document.querySelector<HTMLElement>("#pose-name")!;
 let motion = "idle",
   faction = 0,
   paused = false,
@@ -60,8 +62,12 @@ nav.addEventListener("click", (e) => {
   if (!key) return;
   motion = key;
   started = time;
+  if (paused && (key === "doubleCut" || key === "swordChain")) {
+    paused = false;
+    document.querySelector("#pause")!.textContent = "Duraklat";
+  }
   buttons();
-  document.querySelector("#pose-name")!.textContent = motions.find(
+  poseLabel.textContent = motions.find(
     (m) => m[0] === key,
   )![1];
 });
@@ -91,7 +97,8 @@ const camera = new T.PerspectiveCamera(40, 1, 0.1, 160);
 camera.position.set(6, 5.4, 14.5);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1, 0);
-if (duel) camera.position.set(0, 2.35, 6.1);
+// An elevated, centered view shows the return arc without favoring either fighter.
+if (duel) camera.position.set(0, 3.30, 5.80);
 controls.minDistance = 3;
 controls.maxDistance = 65;
 controls.maxPolarAngle = Math.PI * 0.48;
@@ -164,6 +171,24 @@ function animate(now: number) {
   last = now;
   if (!paused) time += dt;
   chars.begin(time, camera.position);
+  const combo = duel && (motion === "doubleCut" || motion === "swordChain");
+  const beats = motion === "doubleCut" ? 2 : 3;
+  const cutsEnd = swordSteps[0].duration + swordSteps[1].duration;
+  const chainLength = cutsEnd + (beats === 3 ? swordSteps[2].duration : 0);
+  const round = chainLength + .66;
+  const seriesTime = time - started;
+  const attacker = Math.floor(seriesTime / round) % 2;
+  const age = seriesTime % round;
+  const step = age < swordSteps[0].duration ? 0 : age < cutsEnd ? 1 : beats-1;
+  const beat = swordSteps[step];
+  const beatAge = age - (step === 0 ? 0 : step === 1 ? swordSteps[0].duration : cutsEnd);
+  const progress = beatAge / beat.duration;
+  if (combo) {
+    const title = age < chainLength
+      ? `${attacker === 0 ? "Muhafız" : "Ağır piyade"} · ${step+1}/${beats} · ${swordLabels[step]}`
+      : "Garda dönüş";
+    if (poseLabel.textContent !== title) poseLabel.textContent = title;
+  }
   if (loaded)
     for (let i = 0; i < (duel ? 2 : crowd ? 400 : 5); i++) {
       const kind = duel ? "sword" : kinds[i % 5],
@@ -172,13 +197,14 @@ function animate(now: number) {
         action = motion === "attack" ? gear.attack : motion;
       const duration = chars.duration(gear.model, action),
         once =
-          ["attack", "hit", "death", "backslash", "stab", "blockHit"].includes(motion) ||
+          ["attack", "hit", "death", "blockHit"].includes(motion) ||
           motion.startsWith("dodge"),
         cycle = duration + 0.7;
       const phase = once
         ? (time - started) % cycle
         : time + (crowd ? i * 0.173 : 0);
       let shownAction = action, shownPhase = phase, loop = !once;
+      let approach = 0;
       const sparring = duel && motion === "attack";
       if (sparring) {
         const elapsed = time - started;
@@ -197,7 +223,26 @@ function animate(now: number) {
         }
         loop = false;
       }
-      const x = duel ? (i - .5) * 2.15 : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
+      if (combo) {
+        const sinceContact = beatAge - beat.duration * beat.impact;
+        shownAction = "block";
+        shownPhase = 0;
+        loop = false;
+        if (i === attacker && age < chainLength) {
+          shownAction = swordMotion(step, true);
+          shownPhase = swordPhase(step, progress, gear.model, true) * chars.duration(gear.model, shownAction);
+          approach = (step === 2 ? .08 : .10) * Math.sin(Math.PI * progress) ** 2;
+        } else if (i !== attacker && step === 2 && sinceContact < 0) {
+          shownAction = "idle";
+          approach = -.13 * Math.sin(Math.PI * progress) ** 2;
+        } else if (i !== attacker && sinceContact >= 0 && sinceContact < .24) {
+          shownAction = step === 2 ? "hit" : "blockHit";
+          shownPhase = sinceContact / .24 * chars.duration(gear.model, shownAction);
+          approach = -(step === 2 ? .13 : 0) - .09 * Math.sin(Math.PI * sinceContact / .24);
+        }
+      }
+      const spacing = combo ? 1.74 - 2 * approach : 2.15;
+      const x = duel ? (i - .5) * spacing : crowd ? ((i % 20) - 9.5) * 1.45 : (i - 2) * 2.35,
         z = crowd ? (Math.floor(i / 20) - 9.5) * 1.45 : 0;
       chars.draw({
         id: String(i),
@@ -205,10 +250,11 @@ function animate(now: number) {
         x,
         y: 0,
         z,
-        facing: duel ? (i === 0 ? 1 : -1) * (sparring ? Math.PI/2 : .80) : 0,
+        facing: duel ? (i === 0 ? 1 : -1) * (sparring || combo ? Math.PI/2 : .80) : 0,
         color: colors[owner],
         motion: shownAction,
         phase: shownPhase,
+        blendSeconds: combo ? .08 : undefined,
         loop,
       });
       if (!crowd) {

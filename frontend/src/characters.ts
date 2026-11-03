@@ -51,6 +51,7 @@ export type Character = {
   lean?: number;
   visibility?: number;
   focus?: boolean;
+  blendSeconds?: number;
 };
 const matrix = new T.Object3D();
 const CAPACITY = 1100;
@@ -311,7 +312,8 @@ export class Characters {
   }
 
   duration(model: string, motion: string) {
-    return this.models.get(model)?.meta.animations[motion]?.duration || 1;
+    const rig = this.models.get(model);
+    return rig?.meta.animations[motion]?.duration ?? rig?.duelClips[motion]?.duration ?? 1;
   }
 
   draw(actor: Character) {
@@ -343,7 +345,7 @@ export class Characters {
     }
     blend.frame = frame;
     blend.seen = this.now;
-    const mix = T.MathUtils.clamp((this.now - blend.at) / 0.12, 0, 1);
+    const mix = T.MathUtils.clamp((this.now - blend.at) / (actor.blendSeconds ?? 0.12), 0, 1);
     matrix.position.set(actor.x, actor.y, actor.z);
     matrix.rotation.set(actor.lean || 0, actor.facing, 0, "YXZ");
     // Body rigs share anatomical landmarks; helmets and capes have different bounds.

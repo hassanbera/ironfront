@@ -4,6 +4,7 @@ import { Characters, outfit } from "./characters";
 import { heroMovement, movementClip } from "./hero-controls";
 import { HeroTrack } from "./hero-track";
 import { attackProgress } from "./attack-motion";
+import { swordLabels, swordMotion, swordPhase, swordSteps } from "./sword-chain";
 import { ActorVisibility } from "./actor-visibility";
 import { addInstanceFade, crowdVisibility } from "./visibility";
 import {
@@ -1668,6 +1669,7 @@ export class World {
         const duration = h.attackDuration || 0.55;
         const attacking =
           h.attackAt > 0 && attackAge >= 0 && attackAge < duration;
+        const beat = h.swordChain && attacking ? h.attackKind ?? 0 : -1;
         const travel = movementClip(locomotion.x, locomotion.z, v.facing);
         const guardTravel = (
           {
@@ -1696,7 +1698,7 @@ export class World {
               : attacking
                 ? h.class === 2
                   ? "shoot"
-                  : ["slash", "backslash", "stab"][h.attackKind || 0]
+                  : beat >= 0 ? swordMotion(beat, gear.weapon === "duelSword") : ["slash", "backslash", "stab"][h.attackKind || 0]
                 : hitAge < 0.24
                   ? "hit"
                   : landing
@@ -1708,7 +1710,7 @@ export class World {
           ? (1 - (h.dodgeUntil - serverTime) / 0.3) *
             this.characters.duration(gear.model, motion)
           : attacking
-            ? (attackAge / duration) *
+            ? (beat >= 0 ? swordPhase(beat, attackAge / duration, gear.model, gear.weapon === "duelSword") : attackAge / duration) *
               this.characters.duration(gear.model, motion)
             : ["hit", "blockHit"].includes(motion)
               ? hitAge * 2
@@ -1726,6 +1728,7 @@ export class World {
           facing: v.facing,
           color: factionColors[h.owner],
           focus: local,
+          blendSeconds: beat >= 0 ? .08 : undefined,
           motion,
           phase,
           loop:
@@ -1747,6 +1750,7 @@ export class World {
             attacking,
             h.block,
             dodging,
+            beat,
           );
           this.drawSwing(
             v.x,
@@ -1755,6 +1759,7 @@ export class World {
             v.facing,
             attacking && h.class !== 2 ? attackAge / duration : -1,
             h.attackKind || 0,
+            beat,
           );
           if (moving && !dodging && v.y <= 0.01 && this.time > this.footstep) {
             this.footstep = this.time + (h.block ? 0.4 : 0.28);
@@ -2368,6 +2373,7 @@ export class World {
     attacking: boolean,
     blocking: boolean,
     dodging: boolean,
+    beat: number,
   ) {
     const cue = document.getElementById("hero-feedback");
     if (!cue) return;
@@ -2378,7 +2384,7 @@ export class World {
       : blocking
         ? "SAVUNMA"
         : attacking
-          ? progress < 0.3
+          ? beat >= 0 ? swordLabels[beat] : progress < 0.3
             ? "HAZIRLIK"
             : progress < 0.55
               ? "VURUŞ"
@@ -2405,6 +2411,7 @@ export class World {
     facing: number,
     p: number,
     kind: number,
+    beat: number,
   ) {
     if (!this.swing) {
       const vertices: number[] = [];
@@ -2438,17 +2445,20 @@ export class World {
       );
       this.effects.add(this.swing);
     }
-    this.swing.visible = p > 0.26 && p < 0.56;
+    const contact = beat >= 0 ? swordSteps[beat].impact : .42;
+    const offset = p - contact;
+    this.swing.visible = offset > -.16 && offset < .14;
     if (!this.swing.visible) return;
     this.swing.position.set(x, heightAt(this.mapID, x, z) + 1.45 + y, z);
+    this.swing.scale.set(beat === 2 ? .07 : 1, 1, beat === 2 ? .94 + offset : 1);
     this.swing.rotation.set(
-      kind === 1 ? 0.45 : kind === 2 ? -0.55 : 0,
-      facing + (p - 0.42) * 3,
+      beat >= 0 ? 0 : kind === 1 ? 0.45 : kind === 2 ? -0.55 : 0,
+      facing + offset * (beat === 1 ? -3 : beat === 2 ? 0 : 3),
       0,
       "YXZ",
     );
     (this.swing.material as THREE.MeshBasicMaterial).opacity =
-      Math.sin(((p - 0.26) / 0.3) * Math.PI) * 0.3;
+      Math.sin(((offset + .16) / .3) * Math.PI) * 0.3;
   }
   private burst(x: number, z: number, block: boolean) {
     if (this.sparks.length > 80) return;
