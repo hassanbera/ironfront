@@ -408,7 +408,8 @@ func (g *Game) moveSquads(dt float64) {
 			if ranged(spec.Kind) {
 				inReach = d <= g.firingDistance(s, rangeV) && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z})
 			} else {
-				inReach = (previousTarget == enemy.ID && d < 26) || g.hasContactAgainst(s, enemy)
+				nearby := previousTarget == enemy.ID && d < 26 && g.nav.clearShot(s.X, s.Z, enemy.X, enemy.Z)
+				inReach = nearby || g.hasContactAgainst(s, enemy)
 				if (s.Order == "attack" || s.Order == "attackmove") && (s.Target < 1000 || s.Order == "attackmove") && d < 26 &&
 					inReach {
 					g.pressAttack(s, enemy, nil, previousTarget)
