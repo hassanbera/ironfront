@@ -110,11 +110,19 @@ func (g *Game) contactFor(s *Squad, a *SoldierBody, reach, sn, cs float64) unitC
 }
 
 func (g *Game) hasMeleeContact(s *Squad) bool {
+	return g.hasContactAgainst(s, nil)
+}
+
+func (g *Game) hasContactAgainst(s, enemy *Squad) bool {
 	sn, cs := math.Sin(s.Facing), math.Cos(s.Facing)
 	reach := weaponReach(g.spec(s).Kind)
 	for _, slot := range s.Slots {
 		a := &s.Bodies[slot]
-		if a.Ready && g.contactFor(s, a, reach, sn, cs).from != nil {
+		if !a.Ready {
+			continue
+		}
+		c := g.contactFor(s, a, reach, sn, cs)
+		if c.from != nil && (enemy == nil || c.to != nil && c.to.Squad == enemy) {
 			return true
 		}
 	}

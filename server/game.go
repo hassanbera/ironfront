@@ -406,11 +406,11 @@ func (g *Game) moveSquads(dt float64) {
 			s.Engaged = d < rangeV+2
 			inReach := false
 			if ranged(spec.Kind) {
-				inReach = d <= rangeV && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z})
+				inReach = d <= g.firingDistance(s, rangeV) && g.nav.line(Vec{s.X, s.Z}, Vec{enemy.X, enemy.Z})
 			} else {
-				inReach = g.hasMeleeContact(s)
+				inReach = (previousTarget == enemy.ID && d < 26) || g.hasContactAgainst(s, enemy)
 				if (s.Order == "attack" || s.Order == "attackmove") && (s.Target < 1000 || s.Order == "attackmove") && d < 26 &&
-					(inReach || previousTarget == enemy.ID) && g.nav.clearShot(s.X, s.Z, enemy.X, enemy.Z) {
+					inReach {
 					g.pressAttack(s, enemy, nil, previousTarget)
 					inReach = true
 				}
@@ -428,7 +428,7 @@ func (g *Game) moveSquads(dt float64) {
 				b := g.Bases[id]
 				if b.Owner != s.Owner && b.HP > 0 {
 					desired = math.Atan2(b.X-s.X, b.Z-s.Z)
-					inReach := dist(s.X, s.Z, b.X, b.Z) < rangeV+7
+					inReach := dist(s.X, s.Z, b.X, b.Z) < g.firingDistance(s, rangeV)+7
 					if !ranged(spec.Kind) {
 						inReach = g.hasMeleeContact(s)
 						if dist(s.X, s.Z, b.X, b.Z) < 26 && (inReach || previousTarget == s.Target) {

@@ -28,6 +28,30 @@ var assaultLanes = func() map[string][25]float64 {
 	return lanes
 }()
 
+// A ranged formation stops where its outermost file can shoot, including the
+// larger spacing between horses. Individual range and cover checks still apply.
+var formationRadius = func() map[string]float64 {
+	radii := map[string]float64{}
+	for shape := range assaultLanes {
+		for i := 0; i < 25; i++ {
+			x, z := formationOffset(shape, i)
+			radii[shape] = math.Max(radii[shape], math.Hypot(x, z))
+		}
+	}
+	return radii
+}()
+
+func (g *Game) firingDistance(s *Squad, reach float64) float64 {
+	if s.Order != "attack" && s.Order != "attackmove" {
+		return reach
+	}
+	margin := formationRadius[g.formation(s).Shape]
+	if mounted(g.spec(s).Kind) {
+		margin *= 1.9
+	}
+	return math.Max(reach*.5, reach-margin)
+}
+
 func (g *Game) pressAttack(s, enemy *Squad, base *Base, previous int) {
 	var cx, cz, radius float64
 	if enemy != nil {
@@ -51,6 +75,7 @@ func (g *Game) pressAttack(s, enemy *Squad, base *Base, previous int) {
 	heading := math.Atan2(s.X-cx, s.Z-cz)
 	lanes := assaultLanes[g.formation(s).Shape]
 	reach := weaponReach(g.spec(s).Kind)
+	rotateFiles := enemy != nil && mounted(g.spec(s).Kind) && !mounted(g.spec(enemy).Kind)
 	for _, slot := range s.Slots {
 		b := &s.Bodies[slot]
 		a := heading - lanes[slot]
@@ -79,7 +104,7 @@ func (g *Game) pressAttack(s, enemy *Squad, base *Base, previous int) {
 		tz += dz * margin
 		// Horse bodies occupy roughly twice the frontage of infantry. Files
 		// that have made their pass peel out, leaving room for the next file.
-		if enemy != nil && mounted(g.spec(s).Kind) && !mounted(g.spec(enemy).Kind) &&
+		if rotateFiles &&
 			(int(math.Round(lanes[slot]/.229))+12+int(g.Time/4))%3 == 0 {
 			tx += dx * 3.8
 			tz += dz * 3.8
@@ -95,6 +120,22 @@ func (g *Game) pressAttack(s, enemy *Squad, base *Base, previous int) {
 			b.assaultX, b.assaultZ = tx, tz
 		} else {
 			b.assaultX, b.assaultZ = b.X, b.Z
+			// A rock can close the assigned flank but leave the front or other
+			// flank open. Find a reachable contact position on this side.
+			if enemy != nil {
+				best := math.MaxFloat64
+				for _, id := range enemy.Slots {
+					foe := &enemy.Bodies[id]
+					x, z := b.X-foe.X, b.Z-foe.Z
+					d := math.Hypot(x, z)
+					if !foe.Ready || d < .01 || d >= best || !g.nav.clearShot(b.X, b.Z, foe.X, foe.Z) {
+						continue
+					}
+					gap := math.Min(d, b.Radius+foe.Radius+reach*.48)
+					b.assaultX, b.assaultZ = foe.X+x*gap/d, foe.Z+z*gap/d
+					best = d
+				}
+			}
 		}
 	}
 }
